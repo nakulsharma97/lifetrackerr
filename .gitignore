@@ -1,0 +1,30 @@
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# Backend
+backend/target/
+backend/*.iml
+backend/.mvn/
+backend/.classpath
+backend/.project
+backend/.settings/
+backend/bin/
+
+# IDE
+.idea/
+*.swp
+*.swo
+*~
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+*.log
+
+# Environment
+.env
+.env.local
+*.env
