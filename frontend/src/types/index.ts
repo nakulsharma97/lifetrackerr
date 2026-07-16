@@ -70,6 +70,7 @@ export interface HabitLogEntry {
   id: number;
   date: string;
   completed: boolean;
+  note?: string;
 }
 
 export interface HabitResponse {
@@ -86,6 +87,7 @@ export interface HabitResponse {
 export interface HabitLogRequest {
   date?: string;
   completed?: boolean;
+  note?: string;
 }
 
 export interface StreakResponse {
@@ -94,6 +96,59 @@ export interface StreakResponse {
   currentStreak: number;
   longestStreak: number;
   totalCompletions: number;
+}
+
+export interface MonthlyTrendItem {
+  month: string;
+  year: number;
+  label: string;
+  total: number;
+}
+
+export interface RecurringExpenseRequest {
+  name: string;
+  amount: number;
+  description?: string;
+  dayOfMonth: number;
+  frequency: string;
+  categoryId: number;
+  startDate: string;
+  endDate?: string;
+}
+
+export interface RecurringExpenseResponse {
+  id: number;
+  name: string;
+  amount: number;
+  description?: string;
+  dayOfMonth: number;
+  frequency: string;
+  active: boolean;
+  startDate: string;
+  endDate?: string;
+  lastGenerated: string;
+  categoryId: number;
+  categoryName: string;
+}
+
+export interface BudgetGoalRequest {
+  categoryId: number;
+  budgetAmount: number;
+  yearMonth?: string;
+  active?: boolean;
+}
+
+export interface BudgetGoalResponse {
+  id: number;
+  categoryId: number;
+  categoryName: string;
+  budgetAmount: number;
+  spentAmount: number;
+  remainingAmount: number;
+  spentPercentage: number;
+  yearMonth: string;
+  active: boolean;
+  exceeded: boolean;
 }
 
 export interface User {

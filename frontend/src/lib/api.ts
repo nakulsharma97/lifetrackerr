@@ -31,7 +31,6 @@ api.interceptors.response.use(
     if (error.response?.status === 401) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
-      // Only redirect if not already on auth pages
       if (!window.location.pathname.startsWith('/auth')) {
         window.location.href = '/auth/login';
       }
@@ -60,10 +59,13 @@ export const categoryApi = {
 // ─── Expenses ──────────────────────────────────────────────
 
 export const expenseApi = {
-  list: (params?: { from?: string; to?: string; categoryId?: number }) =>
+  list: (params?: { from?: string; to?: string; categoryId?: string | number; page?: number; size?: number }) =>
     api.get('/expenses', { params }),
 
   summary: () => api.get('/expenses/summary'),
+
+  monthlyTrend: (months?: number) =>
+    api.get('/expenses/monthly-trend', { params: { months } }),
 
   create: (data: {
     amount: number;
@@ -100,8 +102,60 @@ export const habitApi = {
 
   delete: (id: number) => api.delete(`/habits/${id}`),
 
-  log: (id: number, data: { date?: string; completed?: boolean }) =>
+  log: (id: number, data: { date?: string; completed?: boolean; note?: string }) =>
     api.post(`/habits/${id}/log`, data),
+};
+
+// ─── Recurring Expenses ────────────────────────────────────
+
+export const recurringApi = {
+  list: () => api.get('/recurring'),
+
+  create: (data: {
+    name: string;
+    amount: number;
+    description?: string;
+    dayOfMonth: number;
+    frequency: string;
+    categoryId: number;
+    startDate: string;
+    endDate?: string;
+  }) => api.post('/recurring', data),
+
+  update: (
+    id: number,
+    data: {
+      name: string;
+      amount: number;
+      description?: string;
+      dayOfMonth: number;
+      frequency: string;
+      categoryId: number;
+      startDate: string;
+      endDate?: string;
+    }
+  ) => api.put(`/recurring/${id}`, data),
+
+  delete: (id: number) => api.delete(`/recurring/${id}`),
+
+  toggleActive: (id: number) => api.patch(`/recurring/${id}/toggle`),
+};
+
+// ─── Budget Goals ──────────────────────────────────────────
+
+export const budgetApi = {
+  list: () => api.get('/budgets'),
+
+  listForMonth: (yearMonth: string) => api.get(`/budgets/${yearMonth}`),
+
+  createOrUpdate: (data: {
+    categoryId: number;
+    budgetAmount: number;
+    yearMonth?: string;
+    active?: boolean;
+  }) => api.post('/budgets', data),
+
+  delete: (id: number) => api.delete(`/budgets/${id}`),
 };
 
 export default api;

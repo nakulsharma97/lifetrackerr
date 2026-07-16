@@ -5,6 +5,7 @@ import {
   Target,
   LogOut,
   Activity,
+  Download,
 } from 'lucide-react';
 import { storage } from '../lib/auth';
 
@@ -67,13 +68,23 @@ export default function Sidebar() {
               {user?.email || ''}
             </p>
           </div>
-          <button
-            onClick={handleLogout}
-            className="p-1.5 rounded-md text-ink-lighter hover:text-ink hover:bg-surface-100 transition-colors"
-            title="Log out"
-          >
-            <LogOut className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-1">
+            <a
+              href="/api/export/download"
+              className="p-1.5 rounded-md text-ink-lighter hover:text-ink hover:bg-surface-100 transition-colors"
+              title="Export data (JSON)"
+              download
+            >
+              <Download className="w-4 h-4" />
+            </a>
+            <button
+              onClick={handleLogout}
+              className="p-1.5 rounded-md text-ink-lighter hover:text-ink hover:bg-surface-100 transition-colors"
+              title="Log out"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       </div>
     </aside>

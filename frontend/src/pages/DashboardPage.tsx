@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { DollarSign, Target, TrendingUp, BarChart3 } from 'lucide-react';
-import { expenseApi, habitApi } from '../lib/api';
-import type { ExpenseSummaryResponse, HabitResponse, MonthlyTrendItem } from '../types';
+import { DollarSign, Target, TrendingUp, BarChart3, AlertTriangle, PiggyBank } from 'lucide-react';
+import { expenseApi, habitApi, budgetApi } from '../lib/api';
+import type { ExpenseSummaryResponse, HabitResponse, MonthlyTrendItem, BudgetGoalResponse } from '../types';
 import {
   PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend,
   LineChart, Line, XAxis, YAxis, CartesianGrid,
@@ -22,6 +22,8 @@ export default function DashboardPage() {
   const [summary, setSummary] = useState<ExpenseSummaryResponse | null>(null);
   const [habits, setHabits] = useState<HabitResponse[]>([]);
   const [trend, setTrend] = useState<MonthlyTrendItem[]>([]);
+  const [budgets, setBudgets] = useState<BudgetGoalResponse[]>([]);
+  const [showBudgetForm, setShowBudgetForm] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -29,11 +31,13 @@ export default function DashboardPage() {
       expenseApi.summary(),
       habitApi.list(),
       expenseApi.monthlyTrend(6),
+      budgetApi.list(),
     ])
-      .then(([summaryRes, habitsRes, trendRes]) => {
+      .then(([summaryRes, habitsRes, trendRes, budgetRes]) => {
         setSummary(summaryRes.data);
         setHabits(habitsRes.data);
         setTrend(trendRes.data);
+        setBudgets(budgetRes.data);
       })
       .catch(console.error)
       .finally(() => setLoading(false));
@@ -51,6 +55,7 @@ export default function DashboardPage() {
 
   const trendTotal = trend.reduce((sum, m) => sum + m.total, 0);
   const avgMonthly = trend.length > 0 ? trendTotal / trend.length : 0;
+  const exceededBudgets = budgets.filter((b) => b.exceeded);
 
   return (
     <div className="page-container">
@@ -106,6 +111,86 @@ export default function DashboardPage() {
           <p className="stat-value">${avgMonthly.toFixed(0)}</p>
           <p className="caption mt-1">last 6 months</p>
         </div>
+      </div>
+
+      {/* Budget Alerts */}
+      {exceededBudgets.length > 0 && (
+        <div className="card-minimal p-5 mb-8 border-l-4 border-l-danger">
+          <div className="flex items-center gap-2 mb-3">
+            <AlertTriangle className="w-4 h-4 text-danger" />
+            <h2 className="heading-sm !text-danger">Budget Exceeded</h2>
+          </div>
+          <div className="space-y-2">
+            {exceededBudgets.map((bg) => (
+              <div key={bg.id} className="flex items-center justify-between text-sm">
+                <span className="text-ink">{bg.categoryName}</span>
+                <span className="font-medium text-danger font-mono">
+                  ${bg.spentAmount.toFixed(2)} / ${bg.budgetAmount.toFixed(2)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Budget Goals Section */}
+      <div className="card-minimal p-6 mb-8">
+        <div className="flex items-center justify-between mb-5">
+          <div className="flex items-center gap-2">
+            <PiggyBank className="w-4 h-4 text-ink dark:text-surface-100" />
+            <h2 className="heading-sm">Monthly Budgets</h2>
+          </div>
+          <button
+            onClick={() => setShowBudgetForm(!showBudgetForm)}
+            className="btn-ghost text-xs"
+          >
+            {showBudgetForm ? 'Cancel' : 'Set Budget'}
+          </button>
+        </div>
+
+        {budgets.length === 0 && !showBudgetForm ? (
+          <div className="flex items-center justify-center h-20">
+            <p className="text-xs text-ink-lighter">No budgets set. Click "Set Budget" to add one.</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {budgets.map((bg) => (
+              <div key={bg.id}>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-ink">{bg.categoryName}</span>
+                    <span className="text-xs text-ink-lighter">
+                      ${bg.spentAmount.toFixed(2)} / ${bg.budgetAmount.toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className={`text-xs font-medium ${bg.exceeded ? 'text-danger' : 'text-success'}`}>
+                      {bg.exceeded ? `${bg.spentPercentage.toFixed(0)}% ⚠️` : `${bg.spentPercentage.toFixed(0)}%`}
+                    </span>
+                  </div>
+                </div>
+                <div className="h-2 bg-surface-100 rounded-full overflow-hidden dark:bg-surface-800">
+                  <div
+                    className={`h-full rounded-full transition-all duration-500 ${
+                      bg.exceeded ? 'bg-danger' : 'bg-ink dark:bg-surface-100'
+                    }`}
+                    style={{ width: `${Math.min(bg.spentPercentage, 100)}%` }}
+                  />
+                </div>
+                {bg.exceeded && (
+                  <p className="text-xs text-danger mt-1">
+                    ${bg.remainingAmount.toFixed(2)} over budget
+                  </p>
+                )}
+                {!bg.exceeded && (
+                  <p className="text-xs text-ink-lighter mt-1">
+                    ${bg.remainingAmount.toFixed(2)} remaining
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Today's Habits */}

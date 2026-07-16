@@ -1,11 +1,10 @@
 import { useState, useEffect } from 'react';
-import { Plus, Trash2, Flame, Check } from 'lucide-react';
+import { Plus, Trash2, Flame, Check, StickyNote } from 'lucide-react';
 import { habitApi } from '../lib/api';
-import type { HabitResponse, HabitLogEntry } from '../types';
+import type { HabitResponse } from '../types';
 import {
   format,
   subDays,
-  isAfter,
   startOfDay,
   parseISO,
   isSameDay,
@@ -17,6 +16,7 @@ export default function HabitsPage() {
   const [showForm, setShowForm] = useState(false);
   const [name, setName] = useState('');
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [noteText, setNoteText] = useState<Record<string, string>>({});
 
   const fetchHabits = async () => {
     try {
@@ -66,10 +66,39 @@ export default function HabitsPage() {
   };
 
   const handleToggle = async (habitId: number, dateStr: string, currentCompleted: boolean) => {
+    const noteKey = `${habitId}-${dateStr}`;
+    const note = noteText[noteKey] || '';
     try {
       await habitApi.log(habitId, {
         date: dateStr,
         completed: !currentCompleted,
+        note: note || undefined,
+      });
+      setNoteText((prev) => {
+        const next = { ...prev };
+        delete next[noteKey];
+        return next;
+      });
+      fetchHabits();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleSaveNote = async (habitId: number, dateStr: string) => {
+    const noteKey = `${habitId}-${dateStr}`;
+    const note = noteText[noteKey];
+    if (!note?.trim()) return;
+    try {
+      await habitApi.log(habitId, {
+        date: dateStr,
+        completed: true,
+        note: note,
+      });
+      setNoteText((prev) => {
+        const next = { ...prev };
+        delete next[noteKey];
+        return next;
       });
       fetchHabits();
     } catch (err) {
@@ -187,54 +216,89 @@ export default function HabitsPage() {
                   const logged = isLogged(habit, day);
                   const isToday = isSameDay(day, today);
                   const dayStr = format(day, 'yyyy-MM-dd');
+                  const noteKey = `${habit.id}-${dayStr}`;
+                  const existingNote = habit.recentLogs.find((l) =>
+                    isSameDay(parseISO(l.date), day)
+                  )?.note;
 
                   return (
-                    <button
-                      key={dayStr}
-                      onClick={() =>
-                        handleToggle(habit.id, dayStr, logged === true)
-                      }
-                      className={`
-                        flex flex-col items-center gap-1 p-2 rounded-lg transition-all duration-200
-                        ${logged === true
-                          ? 'bg-success/10'
-                          : logged === false
-                            ? 'bg-surface-100'
-                            : 'bg-surface-50 border border-surface-200 border-dashed'
+                    <div key={dayStr} className="flex flex-col items-center gap-1">
+                      <button
+                        onClick={() =>
+                          handleToggle(habit.id, dayStr, logged === true)
                         }
-                        ${isToday ? 'ring-1 ring-ink/10' : ''}
-                        hover:scale-105 active:scale-95
-                      `}
-                      title={`${format(day, 'EEE, MMM d')}`}
-                    >
-                      <span className="text-[10px] font-medium text-ink-lighter uppercase">
-                        {format(day, 'EEE').charAt(0)}
-                      </span>
-                      <div
                         className={`
-                          w-7 h-7 rounded-full flex items-center justify-center
-                          transition-colors duration-200
+                          flex flex-col items-center gap-1 p-2 rounded-lg transition-all duration-200
                           ${logged === true
-                            ? 'bg-success text-white'
+                            ? 'bg-success/10'
                             : logged === false
-                              ? 'bg-surface-200 text-ink-lighter'
-                              : 'bg-transparent'
+                              ? 'bg-surface-100'
+                              : 'bg-surface-50 border border-surface-200 border-dashed'
                           }
+                          ${isToday ? 'ring-1 ring-ink/10' : ''}
+                          hover:scale-105 active:scale-95
                         `}
+                        title={`${format(day, 'EEE, MMM d')}`}
                       >
-                        {logged === true && (
-                          <Check className="w-3.5 h-3.5" />
-                        )}
-                        {logged === null && (
-                          <span className="text-[10px] text-ink-lighter/40">?</span>
-                        )}
-                      </div>
-                      <span className="text-[10px] text-ink-lighter">
-                        {format(day, 'd')}
-                      </span>
-                    </button>
+                        <span className="text-[10px] font-medium text-ink-lighter uppercase">
+                          {format(day, 'EEE').charAt(0)}
+                        </span>
+                        <div
+                          className={`
+                            w-7 h-7 rounded-full flex items-center justify-center
+                            transition-colors duration-200
+                            ${logged === true
+                              ? 'bg-success text-white'
+                              : logged === false
+                                ? 'bg-surface-200 text-ink-lighter'
+                                : 'bg-transparent'
+                            }
+                          `}
+                        >
+                          {logged === true && (
+                            <Check className="w-3.5 h-3.5" />
+                          )}
+                          {logged === null && (
+                            <span className="text-[10px] text-ink-lighter/40">?</span>
+                          )}
+                        </div>
+                        <span className="text-[10px] text-ink-lighter">
+                          {format(day, 'd')}
+                        </span>
+                      </button>
+                      {existingNote && (
+                        <span className="text-[9px] text-ink-lighter/60 text-center leading-tight max-w-[50px] truncate" title={existingNote}>
+                          📝 {existingNote.length > 12 ? existingNote.slice(0, 12) + '…' : existingNote}
+                        </span>
+                      )}
+                    </div>
                   );
                 })}
+              </div>
+
+              {/* Note input */}
+              <div className="mt-3 flex items-center gap-2">
+                <StickyNote className="w-3.5 h-3.5 text-ink-lighter" />
+                <input
+                  type="text"
+                  placeholder="Add a note about today…"
+                  value={noteText[`${habit.id}-today`] || ''}
+                  onChange={(e) =>
+                    setNoteText((prev) => ({
+                      ...prev,
+                      [`${habit.id}-today`]: e.target.value,
+                    }))
+                  }
+                  className="flex-1 bg-transparent border-0 border-b border-surface-200 pb-0.5 text-xs text-ink placeholder:text-ink-lighter/40 focus:outline-none focus:border-ink/30 transition-colors"
+                />
+                {noteText[`${habit.id}-today`]?.trim() && (
+                  <button
+                    onClick={() => handleSaveNote(habit.id, format(today, 'yyyy-MM-dd'))}
+                    className="text-[10px] font-medium text-ink hover:text-ink-light transition-colors"
+                  >
+                    Save
+                  </button>
+                )}
               </div>
             </div>
           ))}
