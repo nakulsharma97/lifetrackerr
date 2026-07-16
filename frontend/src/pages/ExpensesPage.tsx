@@ -1,11 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, Pencil, Trash2, PieChart as PieChartIcon, RotateCcw } from 'lucide-react';
+import { Plus, Pencil, Trash2, PieChart as PieChartIcon, RotateCcw, X } from 'lucide-react';
 import { expenseApi, categoryApi } from '../lib/api';
 import type { ExpenseResponse, CategoryResponse, ExpenseSummaryResponse } from '../types';
 import { format, startOfMonth } from 'date-fns';
 import {
   PieChart, Pie, Cell, Tooltip, ResponsiveContainer,
 } from 'recharts';
+import { CardSkeleton, TableSkeleton } from '../components/LoadingState';
+import { ErrorBanner } from '../components/ErrorState';
 
 const PIE_COLORS = [
   '#171717',
@@ -23,7 +25,10 @@ export default function ExpensesPage() {
   const [categories, setCategories] = useState<CategoryResponse[]>([]);
   const [summary, setSummary] = useState<ExpenseSummaryResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
@@ -38,6 +43,8 @@ export default function ExpensesPage() {
   const [filterCategoryId, setFilterCategoryId] = useState<number | ''>('');
 
   const fetchData = useCallback(async () => {
+    setLoading(true);
+    setError(null);
     try {
       const params: Record<string, string> = {
         from: dateFrom,
@@ -55,8 +62,9 @@ export default function ExpensesPage() {
       setExpenses(expRes.data);
       setCategories(catRes.data);
       setSummary(summaryRes.data);
-    } catch (err) {
-      console.error(err);
+    } catch (err: any) {
+      const msg = err.response?.data?.message || err.message || 'Failed to load expenses';
+      setError(msg);
     } finally {
       setLoading(false);
     }
@@ -79,12 +87,15 @@ export default function ExpensesPage() {
     setCategoryId('');
     setEditingId(null);
     setShowForm(false);
+    setFormError(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!amount || !categoryId) return;
 
+    setSubmitting(true);
+    setFormError(null);
     try {
       const payload = {
         amount: parseFloat(amount),
@@ -101,8 +112,11 @@ export default function ExpensesPage() {
 
       resetForm();
       fetchData();
-    } catch (err) {
-      console.error(err);
+    } catch (err: any) {
+      const msg = err.response?.data?.message || err.message || 'Failed to save expense';
+      setFormError(msg);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -113,6 +127,7 @@ export default function ExpensesPage() {
     setCategoryId(expense.categoryId);
     setEditingId(expense.id);
     setShowForm(true);
+    setFormError(null);
   };
 
   const handleDelete = async (id: number) => {
@@ -120,17 +135,28 @@ export default function ExpensesPage() {
     try {
       await expenseApi.delete(id);
       fetchData();
-    } catch (err) {
-      console.error(err);
+    } catch (err: any) {
+      const msg = err.response?.data?.message || err.message || 'Failed to delete expense';
+      setError(msg);
     }
   };
 
-  if (loading) {
+  // ─── Loading state (first load only) ──────────────────────
+  if (loading && !expenses.length) {
     return (
       <div className="page-container">
-        <div className="flex items-center justify-center h-64">
-          <p className="text-sm text-ink-lighter">Loading…</p>
+        <div className="page-header">
+          <div className="animate-pulse space-y-2">
+            <div className="h-7 w-36 bg-surface-200 rounded dark:bg-surface-700" />
+            <div className="h-4 w-48 bg-surface-100 rounded dark:bg-surface-800" />
+          </div>
+          <div className="h-10 w-36 bg-surface-200 rounded-lg animate-pulse dark:bg-surface-700" />
         </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-8">
+          <CardSkeleton />
+          <div className="lg:col-span-2"><CardSkeleton rows={4} /></div>
+        </div>
+        <TableSkeleton rows={5} />
       </div>
     );
   }
@@ -143,7 +169,7 @@ export default function ExpensesPage() {
           <p className="body-sm mt-1">Track your spending</p>
         </div>
         <button
-          onClick={() => setShowForm(!showForm)}
+          onClick={() => { setShowForm(!showForm); setFormError(null); }}
           className="btn-primary"
         >
           <Plus className="w-4 h-4" />
@@ -208,12 +234,29 @@ export default function ExpensesPage() {
         </div>
       </div>
 
-      {/* Form */}
+      {/* ─── Error Banner ──────────────────────────────────── */}
+      {error && (
+        <div className="mb-6">
+          <ErrorBanner message={error} onRetry={fetchData} onDismiss={() => setError(null)} />
+        </div>
+      )}
+
+      {/* ─── Form ──────────────────────────────────────────── */}
       {showForm && (
         <div className="card-minimal p-6 mb-8 animate-slide-up">
           <h2 className="heading-sm mb-5">
             {editingId ? 'Edit Expense' : 'New Expense'}
           </h2>
+
+          {formError && (
+            <div className="mb-4 flex items-start gap-2 p-3 rounded-lg border border-danger/20 bg-danger/5">
+              <span className="text-sm text-danger flex-1">{formError}</span>
+              <button onClick={() => setFormError(null)} className="text-danger/60 hover:text-danger">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-4 gap-4">
             <div>
               <label className="block text-xs font-medium text-ink-lighter mb-1 uppercase tracking-wider">
@@ -228,6 +271,7 @@ export default function ExpensesPage() {
                 className="input-minimal"
                 placeholder="0.00"
                 required
+                disabled={submitting}
               />
             </div>
             <div>
@@ -240,6 +284,7 @@ export default function ExpensesPage() {
                 onChange={(e) => setDate(e.target.value)}
                 className="input-minimal"
                 required
+                disabled={submitting}
               />
             </div>
             <div>
@@ -251,6 +296,7 @@ export default function ExpensesPage() {
                 onChange={(e) => setCategoryId(Number(e.target.value))}
                 className="input-minimal"
                 required
+                disabled={submitting}
               >
                 <option value="">Select…</option>
                 {categories.map((cat) => (
@@ -270,21 +316,22 @@ export default function ExpensesPage() {
                 onChange={(e) => setDescription(e.target.value)}
                 className="input-minimal"
                 placeholder="Coffee, lunch…"
+                disabled={submitting}
               />
             </div>
             <div className="sm:col-span-4 flex justify-end gap-3 pt-2">
-              <button type="button" onClick={resetForm} className="btn-secondary">
+              <button type="button" onClick={resetForm} className="btn-secondary" disabled={submitting}>
                 Cancel
               </button>
-              <button type="submit" className="btn-primary">
-                {editingId ? 'Update' : 'Add'}
+              <button type="submit" className="btn-primary" disabled={submitting}>
+                {submitting ? 'Saving…' : editingId ? 'Update' : 'Add'}
               </button>
             </div>
           </form>
         </div>
       )}
 
-      {/* Summary + Chart Section */}
+      {/* ─── Summary + Chart Section ──────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-8">
         {/* Pie Chart */}
         <div className="card-minimal p-5">
@@ -394,7 +441,7 @@ export default function ExpensesPage() {
         </div>
       </div>
 
-      {/* Table */}
+      {/* ─── Table ─────────────────────────────────────────── */}
       <div className="card-minimal overflow-hidden">
         {expenses.length === 0 ? (
           <div className="p-10 text-center">

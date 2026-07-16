@@ -1,47 +1,57 @@
-import { useState, useEffect } from 'react';
-import { Plus, Trash2, Flame, Check } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Plus, Trash2, Flame, Check, X } from 'lucide-react';
 import { habitApi } from '../lib/api';
-import type { HabitResponse, HabitLogEntry } from '../types';
+import type { HabitResponse } from '../types';
 import {
   format,
   subDays,
-  isAfter,
   startOfDay,
   parseISO,
   isSameDay,
 } from 'date-fns';
+import { ListSkeleton } from '../components/LoadingState';
+import { ErrorBanner } from '../components/ErrorState';
 
 export default function HabitsPage() {
   const [habits, setHabits] = useState<HabitResponse[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [name, setName] = useState('');
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
-  const fetchHabits = async () => {
+  const fetchHabits = useCallback(async () => {
+    setLoading(true);
+    setError(null);
     try {
       const { data } = await habitApi.list();
       setHabits(data);
-    } catch (err) {
-      console.error(err);
+    } catch (err: any) {
+      const msg = err.response?.data?.message || err.message || 'Failed to load habits';
+      setError(msg);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchHabits();
-  }, []);
+  }, [fetchHabits]);
 
   const resetForm = () => {
     setName('');
     setEditingId(null);
     setShowForm(false);
+    setFormError(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
+    setSubmitting(true);
+    setFormError(null);
     try {
       if (editingId) {
         await habitApi.update(editingId, { name: name.trim() });
@@ -50,8 +60,11 @@ export default function HabitsPage() {
       }
       resetForm();
       fetchHabits();
-    } catch (err) {
-      console.error(err);
+    } catch (err: any) {
+      const msg = err.response?.data?.message || err.message || 'Failed to save habit';
+      setFormError(msg);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -60,8 +73,9 @@ export default function HabitsPage() {
     try {
       await habitApi.delete(id);
       fetchHabits();
-    } catch (err) {
-      console.error(err);
+    } catch (err: any) {
+      const msg = err.response?.data?.message || err.message || 'Failed to delete habit';
+      setError(msg);
     }
   };
 
@@ -72,8 +86,8 @@ export default function HabitsPage() {
         completed: !currentCompleted,
       });
       fetchHabits();
-    } catch (err) {
-      console.error(err);
+    } catch {
+      setError('Failed to update habit log');
     }
   };
 
@@ -91,9 +105,14 @@ export default function HabitsPage() {
   if (loading) {
     return (
       <div className="page-container">
-        <div className="flex items-center justify-center h-64">
-          <p className="text-sm text-ink-lighter">Loading…</p>
+        <div className="page-header">
+          <div className="animate-pulse space-y-2">
+            <div className="h-7 w-36 bg-surface-200 rounded dark:bg-surface-700" />
+            <div className="h-4 w-48 bg-surface-100 rounded dark:bg-surface-800" />
+          </div>
+          <div className="h-10 w-36 bg-surface-200 rounded-lg animate-pulse dark:bg-surface-700" />
         </div>
+        <ListSkeleton rows={3} />
       </div>
     );
   }
@@ -106,7 +125,7 @@ export default function HabitsPage() {
           <p className="body-sm mt-1">Build your daily routines</p>
         </div>
         <button
-          onClick={() => setShowForm(!showForm)}
+          onClick={() => { setShowForm(!showForm); setFormError(null); }}
           className="btn-primary"
         >
           <Plus className="w-4 h-4" />
@@ -114,12 +133,29 @@ export default function HabitsPage() {
         </button>
       </div>
 
+      {/* Error banner */}
+      {error && (
+        <div className="mb-6">
+          <ErrorBanner message={error} onRetry={fetchHabits} onDismiss={() => setError(null)} />
+        </div>
+      )}
+
       {/* Form */}
       {showForm && (
         <div className="card-minimal p-6 mb-8 animate-slide-up">
           <h2 className="heading-sm mb-5">
             {editingId ? 'Edit Habit' : 'New Habit'}
           </h2>
+
+          {formError && (
+            <div className="mb-4 flex items-start gap-2 p-3 rounded-lg border border-danger/20 bg-danger/5">
+              <span className="text-sm text-danger flex-1">{formError}</span>
+              <button onClick={() => setFormError(null)} className="text-danger/60 hover:text-danger">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="flex items-end gap-4">
             <div className="flex-1">
               <label className="block text-xs font-medium text-ink-lighter mb-1 uppercase tracking-wider">
@@ -132,13 +168,14 @@ export default function HabitsPage() {
                 className="input-minimal"
                 placeholder="Read, Exercise, Meditate…"
                 required
+                disabled={submitting}
               />
             </div>
-            <button type="submit" className="btn-primary">
-              {editingId ? 'Update' : 'Add'}
+            <button type="submit" className="btn-primary" disabled={submitting}>
+              {submitting ? 'Saving…' : editingId ? 'Update' : 'Add'}
             </button>
             {editingId && (
-              <button type="button" onClick={resetForm} className="btn-secondary">
+              <button type="button" onClick={resetForm} className="btn-secondary" disabled={submitting}>
                 Cancel
               </button>
             )}
