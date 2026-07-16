@@ -47,6 +47,14 @@ export interface ExpenseSummaryItem {
   percentage: number;
 }
 
+export interface ExpensePageResponse {
+  content: ExpenseResponse[];
+  totalPages: number;
+  totalElements: number;
+  currentPage: number;
+  size: number;
+}
+
 export interface ExpenseSummaryResponse {
   totalAmount: number;
   transactionCount: number;
