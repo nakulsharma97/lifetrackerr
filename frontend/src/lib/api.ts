@@ -92,9 +92,6 @@ export const habitApi = {
 
   streaks: () => api.get('/habits/streaks'),
 
-  weeklySummary: (weeks?: number) =>
-    api.get('/habits/weekly-summary', { params: { weeks } }),
-
   create: (data: { name: string; frequency?: string }) =>
     api.post('/habits', data),
 

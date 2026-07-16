@@ -1,15 +1,11 @@
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { AnimatePresence } from 'framer-motion';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { storage } from './lib/auth';
-import { ToastProvider } from './lib/useToast';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import DashboardPage from './pages/DashboardPage';
 import ExpensesPage from './pages/ExpensesPage';
 import HabitsPage from './pages/HabitsPage';
-import LandingPage from './pages/LandingPage';
 import Sidebar from './components/Sidebar';
-import PageTransition from './components/PageTransition';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   if (!storage.isAuthenticated()) {
@@ -18,7 +14,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-screen bg-surface-50">
       <Sidebar />
-      <main className="flex-1 ml-16 lg:ml-64 transition-all duration-300">{children}</main>
+      <main className="flex-1 ml-64">{children}</main>
     </div>
   );
 }
@@ -30,31 +26,18 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-function AnimatedRoutes() {
-  const location = useLocation();
-
+export default function App() {
   return (
-    <AnimatePresence mode="wait">
-      <Routes location={location} key={location.pathname}>
-        <Route
-          path="/"
-          element={
-            <PublicRoute>
-              <PageTransition variant="fade">
-                <LandingPage />
-              </PageTransition>
-            </PublicRoute>
-          }
-        />
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
         {/* Auth pages */}
         <Route
           path="/auth/login"
           element={
             <PublicRoute>
-              <PageTransition variant="scale">
-                <LoginPage />
-              </PageTransition>
+              <LoginPage />
             </PublicRoute>
           }
         />
@@ -62,9 +45,7 @@ function AnimatedRoutes() {
           path="/auth/register"
           element={
             <PublicRoute>
-              <PageTransition variant="scale">
-                <RegisterPage />
-              </PageTransition>
+              <RegisterPage />
             </PublicRoute>
           }
         />
@@ -74,9 +55,7 @@ function AnimatedRoutes() {
           path="/dashboard"
           element={
             <ProtectedRoute>
-              <PageTransition variant="fade">
-                <DashboardPage />
-              </PageTransition>
+              <DashboardPage />
             </ProtectedRoute>
           }
         />
@@ -84,9 +63,7 @@ function AnimatedRoutes() {
           path="/expenses"
           element={
             <ProtectedRoute>
-              <PageTransition variant="slide">
-                <ExpensesPage />
-              </PageTransition>
+              <ExpensesPage />
             </ProtectedRoute>
           }
         />
@@ -94,25 +71,13 @@ function AnimatedRoutes() {
           path="/habits"
           element={
             <ProtectedRoute>
-              <PageTransition variant="slide">
-                <HabitsPage />
-              </PageTransition>
+              <HabitsPage />
             </ProtectedRoute>
           }
         />
 
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
-    </AnimatePresence>
-  );
-}
-
-export default function App() {
-  return (
-    <BrowserRouter>
-      <ToastProvider>
-        <AnimatedRoutes />
-      </ToastProvider>
     </BrowserRouter>
   );
 }
