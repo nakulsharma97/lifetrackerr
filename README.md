@@ -1,257 +1,490 @@
-## Overview
-
-This project uses the following tech stack:
-- Vite
-- Typescript
-- React Router v7 (all imports from `react-router` instead of `react-router-dom`)
-- React 19 (for frontend components)
-- Tailwind v4 (for styling)
-- Shadcn UI (for UI components library)
-- Lucide Icons (for icons)
-- Convex (for backend & database)
-- Convex Auth (for authentication)
-- Framer Motion (for animations)
-- Three js (for 3d models)
-
-All relevant files live in the 'src' directory.
-
-Use bun for the package manager.
-
-## Setup
-
-This project is set up already and running on a cloud environment, as well as a convex development in the sandbox.
-
-## Environment Variables
-
-The project is set up with project specific CONVEX_DEPLOYMENT and VITE_CONVEX_URL environment variables on the client side.
-
-The convex server has a separate set of environment variables that are accessible by the convex backend.
-
-Currently, these variables include auth-specific keys: JWKS, JWT_PRIVATE_KEY, and SITE_URL.
-
-
-# Using Authentication (Important!)
-
-You must follow these conventions when using authentication.
-
-## Auth is already set up.
-
-All convex authentication functions are already set up. The auth currently uses email OTP and anonymous users, but can support more.
-
-The email OTP configuration is defined in `src/convex/auth/emailOtp.ts`. DO NOT MODIFY THIS FILE.
-
-Also, DO NOT MODIFY THESE AUTH FILES: `src/convex/auth.config.ts` and `src/convex/auth.ts`.
-
-## Using Convex Auth on the backend
-
-On the `src/convex/users.ts` file, you can use the `getCurrentUser` function to get the current user's data.
-
-## Using Convex Auth on the frontend
-
-The `/auth` page is already set up to use auth. Navigate to `/auth` for all log in / sign up sequences.
-
-You MUST use this hook to get user data. Never do this yourself without the hook:
-```typescript
-import { useAuth } from "@/hooks/use-auth";
-
-const { isLoading, isAuthenticated, user, signIn, signOut } = useAuth();
-```
-
-## Protected Routes
-
-When protecting a page, use the auth hooks to check for authentication and redirect to /auth.
-
-## Auth Page
-
-The auth page is defined in `src/pages/Auth.tsx`. Redirect authenticated pages and sign in / sign up to /auth.
-
-## Authorization
-
-You can perform authorization checks on the frontend and backend.
-
-On the frontend, you can use the `useAuth` hook to get the current user's data and authentication state.
-
-You should also be protecting queries, mutations, and actions at the base level, checking for authorization securely.
-
-## Adding a redirect after auth
-
-In `src/main.tsx`, you must add a redirect after auth URL to redirect to the correct dashboard/profile/page that should be created after authentication.
-
-# Frontend Conventions
-
-You will be using the Vite frontend with React 19, Tailwind v4, and Shadcn UI.
-
-Generally, pages should be in the `src/pages` folder, and components should be in the `src/components` folder.
-
-Shadcn primitives are located in the `src/components/ui` folder and should be used by default.
-
-## Page routing
-
-Your page component should go under the `src/pages` folder.
-
-When adding a page, update the react router configuration in `src/main.tsx` to include the new route you just added.
-
-## Shad CN conventions
-
-Follow these conventions when using Shad CN components, which you should use by default.
-- Remember to use "cursor-pointer" to make the element clickable
-- For title text, use the "tracking-tight font-bold" class to make the text more readable
-- Always make apps MOBILE RESPONSIVE. This is important
-- AVOID NESTED CARDS. Try and not to nest cards, borders, components, etc. Nested cards add clutter and make the app look messy.
-- AVOID SHADOWS. Avoid adding any shadows to components. stick with a thin border without the shadow.
-- Avoid skeletons; instead, use the loader2 component to show a spinning loading state when loading data.
-
-
-## Landing Pages
-
-You must always create good-looking designer-level styles to your application. 
-- Make it well animated and fit a certain "theme", ie neo brutalist, retro, neumorphism, glass morphism, etc
-
-Use known images and emojis from online.
-
-If the user is logged in already, show the get started button to say "Dashboard" or "Profile" instead to take them there.
-
-## Responsiveness and formatting
-
-Make sure pages are wrapped in a container to prevent the width stretching out on wide screens. Always make sure they are centered aligned and not off-center.
-
-Always make sure that your designs are mobile responsive. Verify the formatting to ensure it has correct max and min widths as well as mobile responsiveness.
-
-- Always create sidebars for protected dashboard pages and navigate between pages
-- Always create navbars for landing pages
-- On these bars, the created logo should be clickable and redirect to the index page
-
-## Animating with Framer Motion
-
-You must add animations to components using Framer Motion. It is already installed and configured in the project.
-
-To use it, import the `motion` component from `framer-motion` and use it to wrap the component you want to animate.
-
-
-### Other Items to animate
-- Fade in and Fade Out
-- Slide in and Slide Out animations
-- Rendering animations
-- Button clicks and UI elements
-
-Animate for all components, including on landing page and app pages.
-
-## Three JS Graphics
-
-Your app comes with three js by default. You can use it to create 3D graphics for landing pages, games, etc.
-
-
-## Colors
-
-You can override colors in: `src/index.css`
-
-This uses the oklch color format for tailwind v4.
-
-Always use these color variable names.
-
-Make sure all ui components are set up to be mobile responsive and compatible with both light and dark mode.
-
-Set theme using `dark` or `light` variables at the parent className.
-
-## Styling and Theming
-
-When changing the theme, always change the underlying theme of the shad cn components app-wide under `src/components/ui` and the colors in the index.css file.
-
-Avoid hardcoding in colors unless necessary for a use case, and properly implement themes through the underlying shad cn ui components.
-
-When styling, ensure buttons and clickable items have pointer-click on them (don't by default).
-
-Always follow a set theme style and ensure it is tuned to the user's liking.
-
-## Toasts
-
-You should always use toasts to display results to the user, such as confirmations, results, errors, etc.
-
-Use the shad cn Sonner component as the toaster. For example:
+<div align="center">
+  <h1>🏃 LifeTracker</h1>
+  <p><strong>Track expenses & daily habits — clean, minimal, self-hosted</strong></p>
+
+  <p>
+    <img src="https://img.shields.io/badge/java-17-%23ED8B00?logo=java" alt="Java 17">
+    <img src="https://img.shields.io/badge/spring%20boot-3.2-%236DB33F?logo=springboot" alt="Spring Boot 3.2">
+    <img src="https://img.shields.io/badge/react-18-%2361DAFB?logo=react" alt="React 18">
+    <img src="https://img.shields.io/badge/vite-5-%23646CFF?logo=vite" alt="Vite 5">
+    <img src="https://img.shields.io/badge/postgresql-16-%234169E1?logo=postgresql" alt="PostgreSQL 16">
+    <img src="https://img.shields.io/badge/docker-ready-%232496ED?logo=docker" alt="Docker Ready">
+  </p>
+</div>
+
+---
+
+## 📋 Table of Contents
+
+- [Features](#-features)
+- [Architecture](#-architecture)
+- [Tech Stack](#-tech-stack)
+- [Project Structure](#-project-structure)
+- [Getting Started (Local)](#-getting-started-local)
+- [Docker Deployment (One Command)](#-docker-deployment-one-command)
+- [API Endpoints](#-api-endpoints)
+- [Environment Variables](#-environment-variables)
+- [Production Build](#-production-build)
+- [Cloud Deployment](#-cloud-deployment)
+- [Screenshots](#-screenshots)
+
+---
+
+## ✨ Features
+
+### 📊 Dashboard
+| Widget | Description |
+|--------|-------------|
+| **Monthly Spend** | Total expenses this month with transaction count |
+| **Active Habits** | Number of habits being tracked |
+| **Categories Used** | Expense categories with spending |
+| **Pie Chart** | Expense breakdown by category (Recharts) |
+| **Today's Habits** | Quick status with streak counts |
+
+### 💰 Expenses
+| Feature | Details |
+|---------|---------|
+| **CRUD** | Create, edit, delete expenses with validations |
+| **Filters** | Date range picker + category dropdown |
+| **Pie Chart** | Monthly spending by category |
+| **Progress Bars** | Per-category spending with percentage |
+| **Running Total** | "Showing X expenses — Total: $Y" |
+| **CSV Export** | Download filtered data as CSV |
+| **Toast Alerts** | Success/error feedback on all actions |
+
+### 🔥 Habits
+| Feature | Details |
+|---------|---------|
+| **CRUD** | Create, rename, delete habits |
+| **7-Day Grid** | Visual log — tap to toggle |
+| **Streak Tracking** | Current + longest streak per habit |
+| **Total Completions** | Lifetime completion count |
+| **Weekly Summary Chart** | Bar chart — completions per day (last 4 weeks) |
+| **Progress Bars** | Per-day completion percentage |
+
+### 🎨 UI/UX
+- **Minimal theme** — monochrome palette, generous whitespace, thin borders
+- **Dark mode** 🌙 — toggle in sidebar, persists to localStorage, system preference detection
+- **Responsive** — collapsible sidebar with hamburger menu on mobile
+- **Page transitions** — Framer Motion fade/slide/scale between routes
+- **Loading skeletons** — shimmer placeholders for all data states
+- **Error handling** — inline banners with retry + dismiss
+- **Confirmation dialogs** — custom modal replaces browser prompts
+
+---
+
+## 🏗 Architecture
 
 ```
-import { toast } from "sonner"
-
-import { Button } from "@/components/ui/button"
-export function SonnerDemo() {
-  return (
-    <Button
-      variant="outline"
-      onClick={() =>
-        toast("Event has been created", {
-          description: "Sunday, December 03, 2023 at 9:00 AM",
-          action: {
-            label: "Undo",
-            onClick: () => console.log("Undo"),
-          },
-        })
-      }
-    >
-      Show Toast
-    </Button>
-  )
-}
+┌─────────────────────────────────────────────────────────┐
+│                     Browser (:80)                        │
+└──────────────────────┬──────────────────────────────────┘
+                       │
+┌──────────────────────▼──────────────────────────────────┐
+│                    Frontend                              │
+│         Nginx Alpine (static files + SPA routing)        │
+│                                                          │
+│  /api/* ──────► proxy to backend:8080                    │
+│  /* ─────────► serve index.html (React SPA)             │
+└──────────────────────┬──────────────────────────────────┘
+                       │
+┌──────────────────────▼──────────────────────────────────┐
+│                    Backend                                │
+│         Spring Boot 3.2 / Java 17                        │
+│                                                          │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐               │
+│  │Controller│→ │ Service  │→ │Repository│               │
+│  └──────────┘  └──────────┘  └──────────┘               │
+│       │              │             │                     │
+│  ┌────▼────┐   ┌────▼────┐   ┌────▼────┐                │
+│  │   JWT   │   │ Streak  │   │ JPA/HQL │                │
+│  │  Auth   │   │ Engine  │   │ Queries │                │
+│  └─────────┘   └─────────┘   └─────────┘                │
+└──────────────────────┬──────────────────────────────────┘
+                       │
+┌──────────────────────▼──────────────────────────────────┐
+│                    Database                               │
+│         PostgreSQL 16 (production)                       │
+│         H2 in-memory (development)                       │
+│                                                          │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐               │
+│  │   users  │  │categories│  │ expenses │               │
+│  └──────────┘  └──────────┘  └──────────┘               │
+│  ┌──────────┐  ┌──────────┐                              │
+│  │  habits  │  │habit_logs│                              │
+│  └──────────┘  └──────────┘                              │
+└──────────────────────────────────────────────────────────┘
 ```
 
-Remember to import { toast } from "sonner". Usage: `toast("Event has been created.")`
+### Data Flow
 
-## Dialogs
-
-Always ensure your larger dialogs have a scroll in its content to ensure that its content fits the screen size. Make sure that the content is not cut off from the screen.
-
-Ideally, instead of using a new page, use a Dialog instead. 
-
-# Using the Convex backend
-
-You will be implementing the convex backend. Follow your knowledge of convex and the documentation to implement the backend.
-
-## The Convex Schema
-
-You must correctly follow the convex schema implementation.
-
-The schema is defined in `src/convex/schema.ts`.
-
-Do not include the `_id` and `_creationTime` fields in your queries (it is included by default for each table).
-Do not index `_creationTime` as it is indexed for you. Never have duplicate indexes.
-
-
-## Convex Actions: Using CRUD operations
-
-When running anything that involves external connections, you must use a convex action with "use node" at the top of the file.
-
-You cannot have queries or mutations in the same file as a "use node" action file. Thus, you must use pre-built queries and mutations in other files.
-
-You can also use the pre-installed internal crud functions for the database:
-
-```ts
-// in convex/users.ts
-import { crud } from "convex-helpers/server/crud";
-import schema from "./schema.ts";
-
-export const { create, read, update, destroy } = crud(schema, "users");
-
-// in some file, in an action:
-const user = await ctx.runQuery(internal.users.read, { id: userId });
-
-await ctx.runMutation(internal.users.update, {
-  id: userId,
-  patch: {
-    status: "inactive",
-  },
-});
+```
+User Action → React → Axios (JWT) → Nginx → Spring Boot → JPA → PostgreSQL
+                                                                    │
+User ← React ← JSON Response ← Spring Boot ← Service Layer ←───────┘
 ```
 
+### Auth Flow
 
-## Common Convex Mistakes To Avoid
+```
+Login → POST /api/auth/login → JWT generated (256-bit HMAC, 24h expiry)
+                                │
+         Every request ───► Bearer token in Authorization header
+                                │
+         JwtAuthenticationFilter validates → SecurityContext set
+```
 
-When using convex, make sure:
-- Document IDs are referenced as `_id` field, not `id`.
-- Document ID types are referenced as `Id<"TableName">`, not `string`.
-- Document object types are referenced as `Doc<"TableName">`.
-- Keep schemaValidation to false in the schema file.
-- You must correctly type your code so that it passes the type checker.
-- You must handle null / undefined cases of your convex queries for both frontend and backend, or else it will throw an error that your data could be null or undefined.
-- Always use the `@/folder` path, with `@/convex/folder/file.ts` syntax for importing convex files.
-- This includes importing generated files like `@/convex/_generated/server`, `@/convex/_generated/api`
-- Remember to import functions like useQuery, useMutation, useAction, etc. from `convex/react`
-- NEVER have return type validators.
+### Streak Logic 🔥
+
+```
+1. Query all habit_logs ordered by date descending
+2. Build set of completed dates
+3. Current streak: count consecutive days backward from most recent
+   (only if last completion was today or yesterday)
+4. Longest streak: scan all dates, track longest consecutive run
+```
+
+---
+
+## 🛠 Tech Stack
+
+### Backend
+
+| Technology | Purpose |
+|------------|---------|
+| **Java 17** | Language |
+| **Spring Boot 3.2.5** | Web framework, DI, validation |
+| **Spring Security + JWT** | Authentication with 256-bit HMAC |
+| **Spring Data JPA** | Database ORM |
+| **H2** | Dev database (in-memory) |
+| **PostgreSQL** | Production database |
+| **Lombok** | Boilerplate reduction |
+| **Maven** | Build & dependency management |
+
+### Frontend
+
+| Technology | Purpose |
+|------------|---------|
+| **React 18 + TypeScript** | UI framework |
+| **Vite 5** | Build tool & dev server |
+| **Tailwind CSS 3** | Utility-first styling |
+| **Axios** | HTTP client with JWT interceptor |
+| **React Router v6** | Client-side routing |
+| **Recharts** | Charts (pie + bar) |
+| **Framer Motion** | Page transitions |
+| **Lucide React** | Icons |
+| **date-fns** | Date formatting & arithmetic |
+
+### Infrastructure
+
+| Tool | Purpose |
+|------|---------|
+| **Docker** | Containerization |
+| **Docker Compose** | Multi-service orchestration |
+| **Nginx** | Frontend serving + reverse proxy |
+
+---
+
+## 📁 Project Structure
+
+```
+lifetracker/
+├── backend/
+│   ├── Dockerfile                    # Multi-stage: Maven build → JRE runtime
+│   ├── pom.xml                       # Maven config (Spring Boot 3.2, JPA, Security, JWT)
+│   └── src/main/java/com/lifetracker/
+│       ├── LifeTrackerApplication.java
+│       ├── config/
+│       │   ├── SecurityConfig.java       # Stateless JWT, CORS, BCrypt
+│       │   ├── SecurityUtil.java         # Extract user ID from SecurityContext
+│       │   ├── GlobalExceptionHandler.java
+│       │   └── DataInitializer.java      # Seeds demo user + categories
+│       ├── security/
+│       │   ├── JwtTokenProvider.java     # 256-bit HMAC, 24h JWT
+│       │   ├── JwtAuthenticationFilter.java
+│       │   └── CustomUserDetailsService.java
+│       ├── entity/
+│       │   ├── User.java                # username, email, passwordHash
+│       │   ├── Category.java            # name, type (EXPENSE|HABIT)
+│       │   ├── Expense.java             # amount, description, date
+│       │   ├── Habit.java               # name, frequency, createdAt
+│       │   └── HabitLog.java            # habit+date unique, completed flag
+│       ├── repository/                  # Spring Data JPA repositories
+│       ├── dto/                         # Request/response DTOs
+│       ├── service/                     # Business logic + streak engine
+│       └── controller/                  # REST controllers
+│
+├── frontend/
+│   ├── Dockerfile                    # Multi-stage: Node build → Nginx serve
+│   ├── nginx.conf                    # SPA routing + /api proxy
+│   ├── vite.config.ts                # Dev proxy to localhost:8080
+│   ├── tailwind.config.js
+│   └── src/
+│       ├── main.tsx                  # Entry point
+│       ├── App.tsx                   # Routes + auth guards + toast + theme
+│       ├── index.css                 # Tailwind + design system tokens
+│       ├── components/
+│       │   ├── Sidebar.tsx           # Nav + dark mode toggle + mobile hamburger
+│       │   ├── LoadingState.tsx      # 5 skeleton variants
+│       │   ├── ErrorState.tsx        # Error banner + full-page error
+│       │   ├── ConfirmDialog.tsx     # Keyboard-accessible modal
+│       │   └── PageTransition.tsx    # Framer Motion wrappers
+│       ├── pages/
+│       │   ├── LandingPage.tsx       # Marketing page with scroll animations
+│       │   ├── LoginPage.tsx
+│       │   ├── RegisterPage.tsx
+│       │   ├── DashboardPage.tsx     # Summary cards + pie chart + today's habits
+│       │   ├── ExpensesPage.tsx      # CRUD + filters + pie chart + CSV export
+│       │   └── HabitsPage.tsx        # CRUD + 7-day grid + bar chart
+│       └── lib/
+│           ├── api.ts                # Axios instance + JWT interceptor
+│           ├── auth.ts               # localStorage helpers
+│           ├── useToast.tsx          # Toast context (auto-dismiss 3.5s)
+│           └── useTheme.tsx          # Dark mode hook + system pref detection
+│
+├── docker-compose.yml              # PostgreSQL + backend + frontend
+├── .env.example                    # All env vars documented
+├── .dockerignore
+└── .gitignore
+```
+
+---
+
+## 🚀 Getting Started (Local)
+
+### Prerequisites
+- **Java 17+** and **Maven** (for backend)
+- **Node.js 18+** and **npm** (for frontend)
+
+### 1. Clone
+```bash
+git clone https://github.com/nakulsharma97/lifetrackerr.git
+cd lifetrackerr
+```
+
+### 2. Start Backend
+```bash
+cd backend
+mvn spring-boot:run
+```
+- Runs on **http://localhost:8080**
+- Uses H2 in-memory database (resets on restart)
+- Demo user auto-seeded
+
+### 3. Start Frontend
+```bash
+cd frontend
+npm install
+npm run dev
+```
+- Runs on **http://localhost:5173**
+- API calls proxied to `localhost:8080`
+
+### 4. Open in browser
+Visit **http://localhost:5173** → Log in with **`demo` / `demo123`**
+
+---
+
+## 🐳 Docker Deployment (One Command)
+
+### Prerequisites
+- [Docker](https://docs.docker.com/get-docker/)
+- [Docker Compose](https://docs.docker.com/compose/install/)
+
+### Start everything
+```bash
+docker compose up -d
+```
+
+| Service | Port | URL |
+|---------|------|-----|
+| **Frontend** (Nginx) | `80` | http://localhost |
+| **Backend** (Spring Boot) | `8080` | http://localhost:8080 |
+| **PostgreSQL 16** | `5432` | internal |
+
+Login with **`demo` / `demo123`** (auto-seeded on first run).
+
+### Customize env vars
+```bash
+DB_PASSWORD=mysecurepass \
+JWT_SECRET=$(node -e "console.log(require('crypto').randomBytes(32).toString('base64'))") \
+docker compose up -d
+```
+
+### Stop
+```bash
+docker compose down
+```
+
+### Reset database
+```bash
+docker compose down -v
+docker compose up -d
+```
+
+### Build images manually
+```bash
+docker compose build --no-cache
+docker compose up -d
+```
+
+---
+
+## 📡 API Endpoints
+
+All endpoints except `/api/auth/*`, `/api/health`, and `/api/version` require:
+```
+Authorization: Bearer <jwt_token>
+```
+
+### Auth
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/api/auth/register` | Create account (`username`, `email`, `password`) |
+| `POST` | `/api/auth/login` | Get JWT token (`username`, `password`) |
+
+### System
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/health` | Health check → `{ status, timestamp, service }` |
+| `GET` | `/api/version` | Version info → `{ version, springBootVersion, ... }` |
+
+### Categories
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/categories?type=EXPENSE\|HABIT` | List categories by type |
+
+### Expenses
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/expenses` | List (filter: `from`, `to`, `categoryId`) |
+| `POST` | `/api/expenses` | Create (`amount`, `description`, `date`, `categoryId`) |
+| `PUT` | `/api/expenses/{id}` | Update |
+| `DELETE` | `/api/expenses/{id}` | Delete |
+| `GET` | `/api/expenses/summary` | Monthly summary with breakdown |
+
+### Habits
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/habits` | List all habits with recent logs + streaks |
+| `POST` | `/api/habits` | Create (`name`, `frequency?`) |
+| `PUT` | `/api/habits/{id}` | Update (`name`) |
+| `DELETE` | `/api/habits/{id}` | Delete |
+| `POST` | `/api/habits/{id}/log` | Log completion (`date?`, `completed?`) |
+| `GET` | `/api/habits/streaks` | Get all streak data |
+| `GET` | `/api/habits/weekly-summary?weeks=4` | Weekly completion summary |
+
+---
+
+## 🔐 Environment Variables
+
+### Frontend (set at build time)
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `VITE_API_URL` | `/api` | Backend API URL (set for production builds) |
+
+### Backend (set at runtime)
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `SPRING_PROFILES_ACTIVE` | — | Set to `prod` for PostgreSQL |
+| `DATABASE_URL` | `jdbc:postgresql://localhost:5432/lifetracker` | PostgreSQL connection |
+| `DATABASE_USERNAME` | `lifetracker` | DB user |
+| `DATABASE_PASSWORD` | `changeme` | DB password |
+| `JWT_SECRET` | *generated default* | 256-bit key in Base64 |
+| `PORT` | `8080` | Server port |
+
+### Generate your own JWT secret
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
+```
+
+---
+
+## 📦 Production Build
+
+### Backend JAR
+```bash
+cd backend
+mvn package -DskipTests
+java -jar target/lifetracker-backend-*.jar --spring.profiles.active=prod
+```
+
+### Frontend static build
+```bash
+cd frontend
+VITE_API_URL=https://your-api.com npm run build
+# output: frontend/dist/ — deploy to any static host
+```
+
+---
+
+## ☁️ Cloud Deployment
+
+| Service | What to deploy | Notes |
+|---------|----------------|-------|
+| **Railway** / **Render** / **Fly.io** | Backend JAR (`backend/target/*.jar`) | Set env vars + PostgreSQL addon |
+| **Vercel** / **Netlify** | Frontend (`frontend/dist/`) | Set `VITE_API_URL` build env |
+
+---
+
+## 🖼️ Screenshots
+
+### Landing Page
+```
+Hero with tagline → Features grid → CTA section
+```
+
+### Dashboard
+```
+┌─────────┬──────────┬──────────┐
+│  Spend  │  Habits  │  Cats    │
+├─────────┴──────────┴──────────┤
+│   Today's Habits              │
+├───────────────────────────────┤
+│   Expense Pie Chart           │
+│   (donut + category list)     │
+└───────────────────────────────┘
+```
+
+### Expenses Page
+```
+┌─────────────────────────────────┐
+│  Filters: [From] [To] [Cat] ↺  │
+├────────────────┬────────────────┤
+│  Pie Chart     │  Breakdown     │
+│  (donut)       │  progress bars │
+├────────────────┴────────────────┤
+│  Running total bar              │
+├─────────────────────────────────┤
+│  Table: Date | Cat | Desc | Amt │
+│  [+ Add] [Edit] [Delete]        │
+└─────────────────────────────────┘
+```
+
+### Habits Page
+```
+┌─────────────────────────────────┐
+│  Weekly Summary Bar Chart       │
+│  + day-by-day progress bars     │
+├─────────────────────────────────┤
+│  Habit Card  ─────────────────  │
+│  Name 🔥5 ✓12          ✏️ 🗑️   │
+│  [M][T][W][T][F][S][S]          │
+├─────────────────────────────────┤
+│  Habit Card  ─────────────────  │
+│  ...                            │
+└─────────────────────────────────┘
+```
+
+---
+
+## 📄 License
+
+MIT — free to use, modify, and distribute.
+
+---
+
+<p align="center">
+  Built with ❤️ using Spring Boot + React<br>
+  <a href="https://github.com/nakulsharma97/lifetrackerr">GitHub</a>
+</p>
