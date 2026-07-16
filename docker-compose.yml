@@ -30,13 +30,33 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/api/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
     environment:
       SPRING_PROFILES_ACTIVE: prod
+      PORT: "8080"
+
+      # Database
       DATABASE_URL: jdbc:postgresql://db:5432/lifetracker
       DATABASE_USERNAME: lifetracker
       DATABASE_PASSWORD: ${DB_PASSWORD:-changeme}
-      JWT_SECRET: ${JWT_SECRET:-HQozGwS+oY3IjIFliTVcApwgpkdjRam/FUM3LdbRBVY=}
-      PORT: "8080"
+
+      # Security
+      JWT_SECRET: ${JWT_SECRET}
+
+      # Application
+      APP_BASE_URL: ${APP_BASE_URL:-http://localhost}
+
+      # SMTP / Email (for password reset)
+      MAIL_HOST: ${MAIL_HOST:-}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      MAIL_FROM: ${MAIL_FROM:-noreply@lifetracker.app}
     expose:
       - "8080"
     networks:
@@ -50,7 +70,8 @@ services:
     container_name: lifetracker-frontend
     restart: unless-stopped
     depends_on:
-      - backend
+      backend:
+        condition: service_started
     expose:
       - "80"
     networks:
@@ -64,13 +85,17 @@ services:
     ports:
       - "80:80"
       - "443:443"
+    environment:
+      APP_BASE_URL: ${APP_BASE_URL:-http://localhost}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
       - caddy_config:/config
     depends_on:
-      - backend
-      - frontend
+      backend:
+        condition: service_started
+      frontend:
+        condition: service_started
     networks:
       - app-network
 
