@@ -1,0 +1,54 @@
+version: "3.9"
+
+services:
+  # ─── Database ──────────────────────────────────────────────
+  db:
+    image: postgres:16-alpine
+    container_name: lifetracker-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: lifetracker
+      POSTGRES_USER: lifetracker
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-changeme}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lifetracker"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ─── Backend ───────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: lifetracker-backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      DATABASE_URL: jdbc:postgresql://db:5432/lifetracker
+      DATABASE_USERNAME: lifetracker
+      DATABASE_PASSWORD: ${DB_PASSWORD:-changeme}
+      JWT_SECRET: ${JWT_SECRET:-HQozGwS+oY3IjIFliTVcApwgpkdjRam/FUM3LdbRBVY=}
+      PORT: "8080"
+    ports:
+      - "8080:8080"
+
+  # ─── Frontend ──────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: lifetracker-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+
+volumes:
+  pgdata:

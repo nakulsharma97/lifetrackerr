@@ -1,0 +1,8 @@
+node_modules
+.git
+*.md
+.DS_Store
+Thumbs.db
+*.log
+.github-push.cjs
+.git-commit.cjs
