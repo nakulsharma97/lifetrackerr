@@ -80,6 +80,19 @@ export interface HabitLogRequest {
   completed?: boolean;
 }
 
+export interface WeeklySummaryItem {
+  dayOfWeek: string;
+  label: string;
+  count: number;
+  totalPossible: number;
+}
+
+export interface WeeklySummaryResponse {
+  items: WeeklySummaryItem[];
+  totalCompletions: number;
+  weeksCovered: number;
+}
+
 export interface StreakResponse {
   habitId: number;
   habitName: string;

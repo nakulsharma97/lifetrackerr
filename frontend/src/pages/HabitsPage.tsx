@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, Trash2, Flame, Check, X } from 'lucide-react';
+import { Plus, Trash2, Flame, Check, X, BarChart3 } from 'lucide-react';
 import { habitApi } from '../lib/api';
-import type { HabitResponse } from '../types';
+import type { HabitResponse, WeeklySummaryResponse, WeeklySummaryItem } from '../types';
 import {
   format,
   subDays,
@@ -9,14 +9,27 @@ import {
   parseISO,
   isSameDay,
 } from 'date-fns';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Cell,
+} from 'recharts';
 import { ListSkeleton } from '../components/LoadingState';
 import { ErrorBanner } from '../components/ErrorState';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { useToast } from '../lib/useToast';
 
+const BAR_COLORS = ['#171717', '#525252', '#a3a3a3', '#d4d4d4'];
+
 export default function HabitsPage() {
   const { addToast } = useToast();
   const [habits, setHabits] = useState<HabitResponse[]>([]);
+  const [weeklySummary, setWeeklySummary] = useState<WeeklySummaryResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
@@ -29,12 +42,16 @@ export default function HabitsPage() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<number | null>(null);
 
-  const fetchHabits = useCallback(async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const { data } = await habitApi.list();
-      setHabits(data);
+      const [habitsRes, weeklyRes] = await Promise.all([
+        habitApi.list(),
+        habitApi.weeklySummary(4),
+      ]);
+      setHabits(habitsRes.data);
+      setWeeklySummary(weeklyRes.data);
     } catch (err: any) {
       const msg = err.response?.data?.message || err.message || 'Failed to load habits';
       setError(msg);
@@ -44,8 +61,8 @@ export default function HabitsPage() {
   }, []);
 
   useEffect(() => {
-    fetchHabits();
-  }, [fetchHabits]);
+    fetchData();
+  }, [fetchData]);
 
   const resetForm = () => {
     setName('');
@@ -68,7 +85,7 @@ export default function HabitsPage() {
         addToast('Habit created successfully', 'success');
       }
       resetForm();
-      fetchHabits();
+      fetchData();
     } catch (err: any) {
       const msg = err.response?.data?.message || err.message || 'Failed to save habit';
       setFormError(msg);
@@ -87,7 +104,7 @@ export default function HabitsPage() {
     try {
       await habitApi.delete(deleteTarget);
       addToast('Habit deleted', 'success');
-      fetchHabits();
+      fetchData();
     } catch (err: any) {
       const msg = err.response?.data?.message || err.message || 'Failed to delete habit';
       setError(msg);
@@ -104,7 +121,7 @@ export default function HabitsPage() {
         completed: !currentCompleted,
       });
       addToast(!currentCompleted ? 'Logged!' : 'Unlogged', 'success');
-      fetchHabits();
+      fetchData();
     } catch {
       setError('Failed to update habit log');
     }
@@ -131,6 +148,12 @@ export default function HabitsPage() {
           </div>
           <div className="h-10 w-36 bg-surface-200 rounded-lg animate-pulse dark:bg-surface-700" />
         </div>
+        <div className="mb-8">
+          <div className="card-minimal p-6 animate-pulse">
+            <div className="h-3 w-44 bg-surface-200 rounded mb-6 dark:bg-surface-700" />
+            <div className="h-48 bg-surface-100 rounded dark:bg-surface-800" />
+          </div>
+        </div>
         <ListSkeleton rows={3} />
       </div>
     );
@@ -152,7 +175,108 @@ export default function HabitsPage() {
       {/* Error banner */}
       {error && (
         <div className="mb-6">
-          <ErrorBanner message={error} onRetry={fetchHabits} onDismiss={() => setError(null)} />
+          <ErrorBanner message={error} onRetry={fetchData} onDismiss={() => setError(null)} />
+        </div>
+      )}
+
+      {/* Weekly Summary — Bar Chart */}
+      {weeklySummary && weeklySummary.items.length > 0 && (
+        <div className="card-minimal p-6 mb-8 animate-slide-up">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-2">
+              <BarChart3 className="w-4 h-4 text-ink dark:text-surface-100" />
+              <h2 className="heading-sm">Weekly Summary</h2>
+            </div>
+            <span className="text-xs text-ink-lighter">
+              Last {weeklySummary.weeksCovered} weeks &middot; {weeklySummary.totalCompletions} completions
+            </span>
+          </div>
+
+          <div className="h-56">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={weeklySummary.items.map((item: WeeklySummaryItem) => ({
+                  day: item.label,
+                  completions: item.count,
+                  max: item.totalPossible,
+                }))}
+                margin={{ top: 4, right: 8, bottom: 0, left: -12 }}
+              >
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  stroke="#e5e5e5"
+                  vertical={false}
+                />
+                <XAxis
+                  dataKey="day"
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fontSize: 12, fill: '#737373' }}
+                  dy={6}
+                />
+                <YAxis
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fontSize: 12, fill: '#737373' }}
+                  allowDecimals={false}
+                  domain={[0, (dataMax: number) => Math.max(4, dataMax + 1)]}
+                />
+                <Tooltip
+                  contentStyle={{
+                    background: '#fff',
+                    border: '1px solid #e5e5e5',
+                    borderRadius: '8px',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                    fontSize: '13px',
+                  }}
+                  formatter={(value: number, _name: string, props: any) => [
+                    `${value} / ${props.payload.max} days`,
+                    'Completions',
+                  ]}
+                  labelFormatter={(label: string) => `${label}`}
+                />
+                <Bar
+                  dataKey="completions"
+                  radius={[4, 4, 0, 0]}
+                  maxBarSize={40}
+                  animationBegin={100}
+                  animationDuration={600}
+                >
+                  {weeklySummary.items.map((_item: WeeklySummaryItem, idx: number) => (
+                    <Cell
+                      key={`bar-${idx}`}
+                      fill={BAR_COLORS[idx % BAR_COLORS.length]}
+                    />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+
+          {/* Day-by-day breakdown row */}
+          <div className="grid grid-cols-7 gap-2 mt-5">
+            {weeklySummary.items.map((item: WeeklySummaryItem, idx: number) => {
+              const pct = item.totalPossible > 0
+                ? Math.round((item.count / item.totalPossible) * 100)
+                : 0;
+              return (
+                <div key={item.dayOfWeek} className="text-center">
+                  <p className="text-xs font-medium text-ink dark:text-surface-100">{item.label}</p>
+                  <p className="text-lg font-semibold text-ink dark:text-surface-100 mt-0.5">{item.count}</p>
+                  <div className="w-full h-1.5 bg-surface-100 rounded-full mt-1 overflow-hidden dark:bg-surface-800">
+                    <div
+                      className="h-full rounded-full transition-all duration-500"
+                      style={{
+                        width: `${pct}%`,
+                        backgroundColor: BAR_COLORS[idx % BAR_COLORS.length],
+                      }}
+                    />
+                  </div>
+                  <p className="text-[10px] text-ink-lighter mt-0.5">{pct}%</p>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
 
@@ -184,7 +308,7 @@ export default function HabitsPage() {
         </div>
       ) : (
         <div className="space-y-4">
-          {habits.map((habit) => (
+          {habits.map((habit: HabitResponse) => (
             <div key={habit.id} className="card-minimal p-6 animate-slide-up">
               <div className="flex items-center justify-between mb-5">
                 <div className="flex items-center gap-3">
@@ -199,7 +323,7 @@ export default function HabitsPage() {
 
               {/* 7-day grid */}
               <div className="flex gap-2 flex-wrap">
-                {last7Days.map((day) => {
+                {last7Days.map((day: Date) => {
                   const logged = isLogged(habit, day);
                   const isToday = isSameDay(day, today);
                   const dayStr = format(day, 'yyyy-MM-dd');
