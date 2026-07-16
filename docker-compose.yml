@@ -17,6 +17,8 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      - app-network
 
   # ─── Backend ───────────────────────────────────────────────
   backend:
@@ -35,8 +37,10 @@ services:
       DATABASE_PASSWORD: ${DB_PASSWORD:-changeme}
       JWT_SECRET: ${JWT_SECRET:-HQozGwS+oY3IjIFliTVcApwgpkdjRam/FUM3LdbRBVY=}
       PORT: "8080"
-    ports:
-      - "8080:8080"
+    expose:
+      - "8080"
+    networks:
+      - app-network
 
   # ─── Frontend ──────────────────────────────────────────────
   frontend:
@@ -47,8 +51,34 @@ services:
     restart: unless-stopped
     depends_on:
       - backend
+    expose:
+      - "80"
+    networks:
+      - app-network
+
+  # ─── Caddy Reverse Proxy (HTTPS, automatic certificates) ──
+  caddy:
+    image: caddy:2-alpine
+    container_name: lifetracker-caddy
+    restart: unless-stopped
     ports:
       - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - backend
+      - frontend
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
 
 volumes:
   pgdata:
+  caddy_data:
+  caddy_config:

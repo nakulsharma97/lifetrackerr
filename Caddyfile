@@ -1,0 +1,65 @@
+# ─── LifeTracker Caddyfile ─────────────────────────────────
+# Automatic HTTPS via Let's Encrypt (requires real domain + DNS)
+# For local testing without a domain, use :80 with tls internal
+#
+# Usage:
+#   Production:  caddy run
+#   Docker:      see docker-compose.yml
+
+# ─── Production (with real domain) ─────────────────────────
+# Replace lifetracker.yourdomain.com with your actual domain
+# Caddy auto-provisions Let's Encrypt TLS certificates
+lifetracker.yourdomain.com {
+    tls {
+        # Auto Let's Encrypt (default — no extra config needed)
+    }
+
+    # ─── Security headers ────────────────────────────────────
+    header {
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        Permissions-Policy "camera=(), microphone=(), geolocation=()"
+        # HSTS (1 year — uncomment after confirming HTTPS works)
+        # Strict-Transport-Security "max-age=31536000; includeSubDomains"
+    }
+
+    # ─── Logging ─────────────────────────────────────────────
+    log {
+        output file /data/caddy/logs/access.log
+        format json
+    }
+
+    # ─── API proxy to Spring Boot backend ────────────────────
+    reverse_proxy /api/* backend:8080 {
+        # Pass original client IP
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+
+    # ─── H2 Console (dev only — comment out in production) ───
+    # reverse_proxy /h2-console/* backend:8080
+
+    # ─── Frontend SPA to Nginx ───────────────────────────────
+    reverse_proxy frontend:80
+}
+
+# ─── Local / Development (no real domain) ──────────────────
+# Caddy uses a self-signed internal CA
+# Browser will show "Not Secure" — click Advanced → Proceed
+:80 {
+    # ─── API proxy to Spring Boot backend ────────────────────
+    reverse_proxy /api/* backend:8080 {
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+
+    # ─── H2 Console for dev ──────────────────────────────────
+    reverse_proxy /h2-console/* backend:8080
+
+    # ─── Frontend SPA to Nginx ───────────────────────────────
+    reverse_proxy frontend:80
+}
