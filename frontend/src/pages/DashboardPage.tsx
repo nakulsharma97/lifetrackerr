@@ -1,10 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { DollarSign, Target, TrendingUp } from 'lucide-react';
 import { expenseApi, habitApi } from '../lib/api';
 import type { ExpenseSummaryResponse, HabitResponse } from '../types';
 import {
   PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts';
+import { CardSkeleton, ChartSkeleton } from '../components/LoadingState';
+import { ErrorBanner } from '../components/ErrorState';
 
 const PIE_COLORS = [
   '#171717',
@@ -21,26 +23,45 @@ export default function DashboardPage() {
   const [summary, setSummary] = useState<ExpenseSummaryResponse | null>(null);
   const [habits, setHabits] = useState<HabitResponse[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [summaryRes, habitsRes] = await Promise.all([
+        expenseApi.summary(),
+        habitApi.list(),
+      ]);
+      setSummary(summaryRes.data);
+      setHabits(habitsRes.data);
+    } catch (err: any) {
+      const msg = err.response?.data?.message || err.message || 'Failed to load dashboard';
+      setError(msg);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    Promise.all([
-      expenseApi.summary(),
-      habitApi.list(),
-    ])
-      .then(([summaryRes, habitsRes]) => {
-        setSummary(summaryRes.data);
-        setHabits(habitsRes.data);
-      })
-      .catch(console.error)
-      .finally(() => setLoading(false));
-  }, []);
+    fetchData();
+  }, [fetchData]);
 
   if (loading) {
     return (
       <div className="page-container">
-        <div className="flex items-center justify-center h-64">
-          <p className="text-sm text-ink-lighter">Loading…</p>
+        <div className="page-header">
+          <div className="animate-pulse space-y-2">
+            <div className="h-7 w-36 bg-surface-200 rounded dark:bg-surface-700" />
+            <div className="h-4 w-48 bg-surface-100 rounded dark:bg-surface-800" />
+          </div>
         </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-10">
+          <CardSkeleton />
+          <CardSkeleton />
+          <CardSkeleton />
+        </div>
+        <ChartSkeleton />
       </div>
     );
   }
@@ -54,13 +75,20 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* Error banner */}
+      {error && (
+        <div className="mb-6">
+          <ErrorBanner message={error} onRetry={fetchData} onDismiss={() => setError(null)} />
+        </div>
+      )}
+
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-10">
         <div className="card-minimal p-6">
           <div className="flex items-center justify-between mb-4">
             <span className="stat-label">Spent This Month</span>
-            <div className="w-9 h-9 rounded-lg bg-surface-100 flex items-center justify-center">
-              <DollarSign className="w-4 h-4 text-ink" />
+            <div className="w-9 h-9 rounded-lg bg-surface-100 flex items-center justify-center dark:bg-surface-800">
+              <DollarSign className="w-4 h-4 text-ink dark:text-surface-100" />
             </div>
           </div>
           <p className="stat-value">
@@ -74,8 +102,8 @@ export default function DashboardPage() {
         <div className="card-minimal p-6">
           <div className="flex items-center justify-between mb-4">
             <span className="stat-label">Active Habits</span>
-            <div className="w-9 h-9 rounded-lg bg-surface-100 flex items-center justify-center">
-              <Target className="w-4 h-4 text-ink" />
+            <div className="w-9 h-9 rounded-lg bg-surface-100 flex items-center justify-center dark:bg-surface-800">
+              <Target className="w-4 h-4 text-ink dark:text-surface-100" />
             </div>
           </div>
           <p className="stat-value">{habits.length}</p>
@@ -85,8 +113,8 @@ export default function DashboardPage() {
         <div className="card-minimal p-6">
           <div className="flex items-center justify-between mb-4">
             <span className="stat-label">Categories Used</span>
-            <div className="w-9 h-9 rounded-lg bg-surface-100 flex items-center justify-center">
-              <TrendingUp className="w-4 h-4 text-ink" />
+            <div className="w-9 h-9 rounded-lg bg-surface-100 flex items-center justify-center dark:bg-surface-800">
+              <TrendingUp className="w-4 h-4 text-ink dark:text-surface-100" />
             </div>
           </div>
           <p className="stat-value">
@@ -104,14 +132,14 @@ export default function DashboardPage() {
             {habits.map((habit) => (
               <div
                 key={habit.id}
-                className="flex items-center justify-between py-2 border-b border-surface-100 last:border-0"
+                className="flex items-center justify-between py-2 border-b border-surface-100 last:border-0 dark:border-surface-800"
               >
-                <span className="text-sm text-ink">{habit.name}</span>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-ink-lighter">
+                <span className="text-sm text-ink dark:text-surface-100">{habit.name}</span>
+                <div className="flex items-center gap-3">
+                  <span className="text-xs text-ink-lighter flex items-center gap-1">
                     🔥 {habit.currentStreak} day streak
                   </span>
-                  <span className="text-xs text-success">
+                  <span className="text-xs text-success flex items-center gap-1">
                     ✓ {habit.totalCompletions}
                   </span>
                 </div>
@@ -180,7 +208,7 @@ export default function DashboardPage() {
               {summary.breakdown.map((item, index) => (
                 <div
                   key={item.categoryId}
-                  className="flex items-center justify-between py-2 border-b border-surface-100 last:border-0"
+                  className="flex items-center justify-between py-2 border-b border-surface-100 last:border-0 dark:border-surface-800"
                 >
                   <div className="flex items-center gap-2.5">
                     <span
@@ -190,12 +218,12 @@ export default function DashboardPage() {
                           PIE_COLORS[index % PIE_COLORS.length],
                       }}
                     />
-                    <span className="text-sm text-ink">
+                    <span className="text-sm text-ink dark:text-surface-100">
                       {item.categoryName}
                     </span>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm font-medium text-ink">
+                    <p className="text-sm font-medium text-ink dark:text-surface-100">
                       ${item.total.toFixed(2)}
                     </p>
                     <p className="text-xs text-ink-lighter">
