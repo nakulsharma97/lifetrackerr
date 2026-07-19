@@ -33,24 +33,24 @@ app:
     expiration-ms: 86400000  # 24 hours
 
 ---
-# Production profile — MySQL
+# Production profile — PostgreSQL
 spring:
   config:
     activate:
       on-profile: prod
 
   datasource:
-    url: jdbc:mysql://${DATABASE_HOST:localhost}:${DATABASE_PORT:3306}/${DATABASE_NAME:lifetracker}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
-    driver-class-name: com.mysql.cj.jdbc.Driver
-    username: ${DATABASE_USERNAME:lifetracker}
-    password: ${DATABASE_PASSWORD:}
+    url: jdbc:postgresql://localhost:5432/lifetracker
+    driver-class-name: org.postgresql.Driver
+    username: ${DB_USERNAME:lifetracker}
+    password: ${DB_PASSWORD:lifetracker}
 
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
     properties:
       hibernate:
-        dialect: org.hibernate.dialect.MySQLDialect
+        dialect: org.hibernate.dialect.PostgreSQLDialect
 
   h2:
     console:
