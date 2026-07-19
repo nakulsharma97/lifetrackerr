@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, Pencil, Trash2, PieChart as PieChartIcon, RotateCcw } from 'lucide-react';
+import { Plus, Pencil, Trash2, PieChart as PieChartIcon, RotateCcw, Loader2 } from 'lucide-react';
 import { expenseApi, categoryApi } from '../lib/api';
 import type { ExpenseResponse, CategoryResponse, ExpenseSummaryResponse } from '../types';
 import { format, startOfMonth } from 'date-fns';
@@ -7,16 +7,21 @@ import {
   PieChart, Pie, Cell, Tooltip, ResponsiveContainer,
 } from 'recharts';
 
-const PIE_COLORS = [
-  '#171717',
-  '#525252',
-  '#a3a3a3',
-  '#d4d4d4',
-  '#475569',
-  '#64748b',
-  '#94a3b8',
-  '#cbd5e1',
-];
+const getChartColors = () => {
+  if (typeof document === 'undefined') return ['#171717', '#525252', '#a3a3a3', '#d4d4d4', '#475569', '#64748b', '#94a3b8', '#cbd5e1'];
+  const root = document.documentElement;
+  const style = getComputedStyle(root);
+  return [
+    style.getPropertyValue('--chart-1').trim() || '#171717',
+    style.getPropertyValue('--chart-2').trim() || '#525252',
+    style.getPropertyValue('--chart-3').trim() || '#a3a3a3',
+    style.getPropertyValue('--chart-4').trim() || '#d4d4d4',
+    style.getPropertyValue('--chart-5').trim() || '#475569',
+    style.getPropertyValue('--chart-6').trim() || '#64748b',
+    style.getPropertyValue('--chart-7').trim() || '#94a3b8',
+    style.getPropertyValue('--chart-8').trim() || '#cbd5e1',
+  ];
+};
 
 export default function ExpensesPage() {
   const [expenses, setExpenses] = useState<ExpenseResponse[]>([]);
@@ -24,6 +29,8 @@ export default function ExpensesPage() {
   const [summary, setSummary] = useState<ExpenseSummaryResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [pieColors, setPieColors] = useState<string[]>(getChartColors());
 
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
@@ -36,6 +43,10 @@ export default function ExpensesPage() {
   const [dateFrom, setDateFrom] = useState(format(startOfMonth(today), 'yyyy-MM-dd'));
   const [dateTo, setDateTo] = useState(format(today, 'yyyy-MM-dd'));
   const [filterCategoryId, setFilterCategoryId] = useState<number | ''>('');
+
+  useEffect(() => {
+    setPieColors(getChartColors());
+  }, []);
 
   const fetchData = useCallback(async () => {
     try {
@@ -83,8 +94,8 @@ export default function ExpensesPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!amount || !categoryId) return;
-
+    if (!amount || !categoryId || submitting) return;
+    setSubmitting(true);
     try {
       const payload = {
         amount: parseFloat(amount),
@@ -103,6 +114,8 @@ export default function ExpensesPage() {
       fetchData();
     } catch (err) {
       console.error(err);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -228,6 +241,7 @@ export default function ExpensesPage() {
                 className="input-minimal"
                 placeholder="0.00"
                 required
+                disabled={submitting}
               />
             </div>
             <div>
@@ -240,6 +254,7 @@ export default function ExpensesPage() {
                 onChange={(e) => setDate(e.target.value)}
                 className="input-minimal"
                 required
+                disabled={submitting}
               />
             </div>
             <div>
@@ -251,6 +266,7 @@ export default function ExpensesPage() {
                 onChange={(e) => setCategoryId(Number(e.target.value))}
                 className="input-minimal"
                 required
+                disabled={submitting}
               >
                 <option value="">Select…</option>
                 {categories.map((cat) => (
@@ -270,14 +286,19 @@ export default function ExpensesPage() {
                 onChange={(e) => setDescription(e.target.value)}
                 className="input-minimal"
                 placeholder="Coffee, lunch…"
+                disabled={submitting}
               />
             </div>
             <div className="sm:col-span-4 flex justify-end gap-3 pt-2">
-              <button type="button" onClick={resetForm} className="btn-secondary">
+              <button type="button" onClick={resetForm} className="btn-secondary" disabled={submitting}>
                 Cancel
               </button>
-              <button type="submit" className="btn-primary">
-                {editingId ? 'Update' : 'Add'}
+              <button type="submit" className="btn-primary" disabled={submitting}>
+                {submitting ? (
+                  <><Loader2 className="w-4 h-4 animate-spin" /> Saving…</>
+                ) : (
+                  editingId ? 'Update' : 'Add'
+                )}
               </button>
             </div>
           </form>
@@ -316,7 +337,7 @@ export default function ExpensesPage() {
                     {summary.breakdown.map((_, index) => (
                       <Cell
                         key={`cell-${index}`}
-                        fill={PIE_COLORS[index % PIE_COLORS.length]}
+                        fill={pieColors[index % pieColors.length]}
                       />
                     ))}
                   </Pie>
@@ -353,8 +374,7 @@ export default function ExpensesPage() {
                   <span
                     className="w-2 h-2 rounded-full flex-shrink-0"
                     style={{
-                      backgroundColor:
-                        PIE_COLORS[index % PIE_COLORS.length],
+                      backgroundColor: pieColors[index % pieColors.length],
                     }}
                   />
                   <div className="flex-1 min-w-0">
@@ -372,8 +392,7 @@ export default function ExpensesPage() {
                         className="h-full rounded-full transition-all duration-300"
                         style={{
                           width: `${Math.max(item.percentage, 2)}%`,
-                          backgroundColor:
-                            PIE_COLORS[index % PIE_COLORS.length],
+                          backgroundColor: pieColors[index % pieColors.length],
                         }}
                       />
                     </div>
