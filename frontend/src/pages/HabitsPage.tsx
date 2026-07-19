@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Trash2, Flame, Check } from 'lucide-react';
+import { Plus, Trash2, Flame, Check, Loader2 } from 'lucide-react';
 import { habitApi } from '../lib/api';
 import type { HabitResponse, HabitLogEntry } from '../types';
 import {
@@ -17,6 +17,7 @@ export default function HabitsPage() {
   const [showForm, setShowForm] = useState(false);
   const [name, setName] = useState('');
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [toggling, setToggling] = useState<Set<string>>(new Set());
 
   const fetchHabits = async () => {
     try {
@@ -66,6 +67,9 @@ export default function HabitsPage() {
   };
 
   const handleToggle = async (habitId: number, dateStr: string, currentCompleted: boolean) => {
+    const key = `${habitId}-${dateStr}`;
+    if (toggling.has(key)) return; // prevent double-click
+    setToggling((prev) => new Set(prev).add(key));
     try {
       await habitApi.log(habitId, {
         date: dateStr,
@@ -74,6 +78,12 @@ export default function HabitsPage() {
       fetchHabits();
     } catch (err) {
       console.error(err);
+    } finally {
+      setToggling((prev) => {
+        const next = new Set(prev);
+        next.delete(key);
+        return next;
+      });
     }
   };
 
@@ -187,15 +197,19 @@ export default function HabitsPage() {
                   const logged = isLogged(habit, day);
                   const isToday = isSameDay(day, today);
                   const dayStr = format(day, 'yyyy-MM-dd');
+                  const toggleKey = `${habit.id}-${dayStr}`;
+                  const isToggling = toggling.has(toggleKey);
 
                   return (
                     <button
                       key={dayStr}
                       onClick={() =>
-                        handleToggle(habit.id, dayStr, logged === true)
+                        !isToggling && handleToggle(habit.id, dayStr, logged === true)
                       }
+                      disabled={isToggling}
                       className={`
                         flex flex-col items-center gap-1 p-2 rounded-lg transition-all duration-200
+                        ${isToggling ? 'opacity-50 cursor-not-allowed' : ''}
                         ${logged === true
                           ? 'bg-success/10'
                           : logged === false
@@ -203,7 +217,7 @@ export default function HabitsPage() {
                             : 'bg-surface-50 border border-surface-200 border-dashed'
                         }
                         ${isToday ? 'ring-1 ring-ink/10' : ''}
-                        hover:scale-105 active:scale-95
+                        ${!isToggling ? 'hover:scale-105 active:scale-95' : ''}
                       `}
                       title={`${format(day, 'EEE, MMM d')}`}
                     >
@@ -220,14 +234,16 @@ export default function HabitsPage() {
                               ? 'bg-surface-200 text-ink-lighter'
                               : 'bg-transparent'
                           }
+                          ${isToggling ? 'animate-pulse' : ''}
                         `}
                       >
-                        {logged === true && (
+                        {isToggling ? (
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                        ) : logged === true ? (
                           <Check className="w-3.5 h-3.5" />
-                        )}
-                        {logged === null && (
+                        ) : logged === null ? (
                           <span className="text-[10px] text-ink-lighter/40">?</span>
-                        )}
+                        ) : null}
                       </div>
                       <span className="text-[10px] text-ink-lighter">
                         {format(day, 'd')}
