@@ -1,0 +1,34 @@
+services:
+  - type: web
+    name: lifetracker-backend
+    runtime: java
+    repo: https://github.com/nakulsharma97/lifetrackerr
+    branch: main
+    buildCommand: cd backend && ./mvnw clean package -DskipTests
+    startCommand: java -jar backend/target/*.jar --spring.profiles.active=prod
+    healthCheckPath: /api/health
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      - key: DB_USERNAME
+        fromDatabase:
+          name: lifetracker-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: lifetracker-db
+          property: password
+      - key: DB_URL
+        fromDatabase:
+          name: lifetracker-db
+          property: connectionString
+      - key: APP_JWT_SECRET
+        generateValue: true
+      - key: APP_BASE_URL
+        value: https://lifetracker-backend.onrender.com
+
+databases:
+  - name: lifetracker-db
+    databaseName: lifetracker
+    plan: free
+    postgresMajorVersion: 16
