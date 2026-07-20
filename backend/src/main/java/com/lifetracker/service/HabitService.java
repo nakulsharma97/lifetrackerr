@@ -3,9 +3,9 @@ package com.lifetracker.service;
 import com.lifetracker.dto.*;
 import com.lifetracker.entity.Habit;
 import com.lifetracker.entity.HabitLog;
-import com.lifetracker.entity.User;
 import com.lifetracker.repository.HabitLogRepository;
 import com.lifetracker.repository.HabitRepository;
+import com.lifetracker.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -23,6 +23,7 @@ public class HabitService {
 
     private final HabitRepository habitRepository;
     private final HabitLogRepository habitLogRepository;
+    private final UserRepository userRepository;
 
     public List<HabitResponse> getHabits(Long userId) {
         List<Habit> habits = habitRepository.findByUserId(userId);
@@ -33,7 +34,7 @@ public class HabitService {
         Habit habit = Habit.builder()
                 .name(request.getName())
                 .frequency(Habit.Frequency.valueOf(request.getFrequency().toUpperCase()))
-                .user(UserReference.of(userId))
+                .user(userRepository.getReferenceById(userId))
                 .build();
 
         habit = habitRepository.save(habit);
@@ -67,7 +68,6 @@ public class HabitService {
 
         LocalDate date = request.getDate() != null ? request.getDate() : LocalDate.now();
 
-        // Upsert — if a log already exists for this habit+date, update it
         HabitLog log = habitLogRepository.findByHabitIdAndDate(habitId, date)
                 .orElse(HabitLog.builder()
                         .habit(habit)
@@ -98,12 +98,9 @@ public class HabitService {
         }).collect(Collectors.toList());
     }
 
-    // ─── Private helpers ────────────────────────────────────────
-
     private HabitResponse buildResponse(Habit habit) {
         StreakData data = calculateStreaks(habit.getId());
 
-        // Fetch last 7 days of logs for the weekly view
         LocalDate sevenDaysAgo = LocalDate.now().minusDays(6);
         List<HabitLog> recentLogs = habitLogRepository
                 .findByHabitIdAndDateBetweenOrderByDateDesc(habit.getId(), sevenDaysAgo, LocalDate.now());
@@ -128,11 +125,6 @@ public class HabitService {
                 .build();
     }
 
-    /**
-     * Streak logic: Query habit_logs ordered by date descending.
-     * Count consecutive completed=true days starting from most recent.
-     * Stop at first gap (missing date or completed=false).
-     */
     private StreakData calculateStreaks(Long habitId) {
         List<HabitLog> logs = habitLogRepository.findByHabitIdOrderByDateDesc(habitId);
 
@@ -141,7 +133,6 @@ public class HabitService {
             return new StreakData(0, 0, 0);
         }
 
-        // Build a set of completed dates for efficient lookup
         Set<LocalDate> completedDates = logs.stream()
                 .filter(HabitLog::isCompleted)
                 .map(HabitLog::getDate)
@@ -151,12 +142,9 @@ public class HabitService {
             return new StreakData(0, 0, 0);
         }
 
-        // Current streak: start from today (or most recent date), count backwards
         LocalDate today = LocalDate.now();
         LocalDate mostRecent = Collections.max(completedDates);
 
-        // Only count current streak if the most recent completed date is today or yesterday
-        // Otherwise the streak is broken
         long daysSinceLastCompletion = ChronoUnit.DAYS.between(mostRecent, today);
         int currentStreak = 0;
 
@@ -168,7 +156,6 @@ public class HabitService {
             }
         }
 
-        // Longest streak: iterate through all completed dates
         List<LocalDate> sortedDates = completedDates.stream()
                 .sorted(Comparator.reverseOrder())
                 .collect(Collectors.toList());
@@ -197,13 +184,5 @@ public class HabitService {
         final int currentStreak;
         final int longestStreak;
         final int totalCompletions;
-    }
-
-    private static class UserReference extends User {
-        public static User of(Long id) {
-            User u = new User();
-            u.setId(id);
-            return u;
-        }
     }
 }

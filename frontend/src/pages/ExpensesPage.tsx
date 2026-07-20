@@ -6,17 +6,26 @@ import { format, startOfMonth } from 'date-fns';
 import {
   PieChart, Pie, Cell, Tooltip, ResponsiveContainer,
 } from 'recharts';
+import ConfirmModal from '../components/ConfirmModal';
 
-const PIE_COLORS = [
-  '#171717',
-  '#525252',
-  '#a3a3a3',
-  '#d4d4d4',
-  '#475569',
-  '#64748b',
-  '#94a3b8',
-  '#cbd5e1',
-];
+function getChartColors(): string[] {
+  if (typeof window === 'undefined') {
+    return ['#171717', '#525252', '#a3a3a3', '#d4d4d4', '#475569', '#64748b', '#94a3b8', '#cbd5e1'];
+  }
+  const style = getComputedStyle(document.documentElement);
+  return [
+    style.getPropertyValue('--chart-1').trim() || '#171717',
+    style.getPropertyValue('--chart-2').trim() || '#525252',
+    style.getPropertyValue('--chart-3').trim() || '#a3a3a3',
+    style.getPropertyValue('--chart-4').trim() || '#d4d4d4',
+    style.getPropertyValue('--chart-5').trim() || '#475569',
+    style.getPropertyValue('--chart-6').trim() || '#64748b',
+    style.getPropertyValue('--chart-7').trim() || '#94a3b8',
+    style.getPropertyValue('--chart-8').trim() || '#cbd5e1',
+  ];
+}
+
+const CHART_COLORS = getChartColors();
 
 export default function ExpensesPage() {
   const [expenses, setExpenses] = useState<ExpenseResponse[]>([]);
@@ -25,6 +34,7 @@ export default function ExpensesPage() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
 
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
@@ -120,7 +130,7 @@ export default function ExpensesPage() {
   };
 
   const handleDelete = async (id: number) => {
-    if (!window.confirm('Delete this expense?')) return;
+    setDeleteConfirm(null);
     try {
       await expenseApi.delete(id);
       fetchData();
@@ -155,6 +165,18 @@ export default function ExpensesPage() {
         </button>
       </div>
 
+      {/* ─── Delete Confirmation Modal ─────────────────────── */}
+      <ConfirmModal
+        open={deleteConfirm !== null}
+        title="Delete Expense"
+        message="Are you sure you want to delete this expense? This action cannot be undone."
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        variant="danger"
+        onConfirm={() => deleteConfirm !== null && handleDelete(deleteConfirm)}
+        onCancel={() => setDeleteConfirm(null)}
+      />
+
       {/* ─── Filter Bar ────────────────────────────────────── */}
       <div className="card-minimal p-4 mb-6">
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
@@ -162,7 +184,6 @@ export default function ExpensesPage() {
             Filters
           </span>
 
-          {/* From date */}
           <div className="flex items-center gap-2">
             <label className="text-xs text-ink-lighter">From</label>
             <input
@@ -173,7 +194,6 @@ export default function ExpensesPage() {
             />
           </div>
 
-          {/* To date */}
           <div className="flex items-center gap-2">
             <label className="text-xs text-ink-lighter">To</label>
             <input
@@ -184,7 +204,6 @@ export default function ExpensesPage() {
             />
           </div>
 
-          {/* Category filter */}
           <div className="flex items-center gap-2">
             <label className="text-xs text-ink-lighter">Category</label>
             <select
@@ -201,7 +220,6 @@ export default function ExpensesPage() {
             </select>
           </div>
 
-          {/* Reset */}
           <button
             onClick={resetFilters}
             className="btn-ghost p-1.5 ml-auto"
@@ -301,7 +319,6 @@ export default function ExpensesPage() {
 
       {/* Summary + Chart Section */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-8">
-        {/* Pie Chart */}
         <div className="card-minimal p-5">
           <div className="flex items-center gap-2 mb-4">
             <PieChartIcon className="w-4 h-4 text-ink-lighter" />
@@ -325,13 +342,11 @@ export default function ExpensesPage() {
                     paddingAngle={2}
                     dataKey="value"
                     strokeWidth={0}
-                    animationBegin={100}
-                    animationDuration={600}
                   >
                     {summary.breakdown.map((_, index) => (
                       <Cell
                         key={`cell-${index}`}
-                        fill={PIE_COLORS[index % PIE_COLORS.length]}
+                        fill={CHART_COLORS[index % CHART_COLORS.length]}
                       />
                     ))}
                   </Pie>
@@ -355,7 +370,6 @@ export default function ExpensesPage() {
           )}
         </div>
 
-        {/* Category breakdown list */}
         <div className="card-minimal p-5 lg:col-span-2">
           <h2 className="heading-sm mb-4">Category Breakdown</h2>
           {summary && summary.breakdown.length > 0 ? (
@@ -363,32 +377,27 @@ export default function ExpensesPage() {
               {summary.breakdown.map((item, index) => (
                 <div
                   key={item.categoryId}
-                  className="flex items-center gap-3 py-2 border-b border-surface-100 last:border-0"
+                  className="flex items-center gap-3 py-2 border-b border-surface-100 last:border-0 dark:border-surface-800"
                 >
                   <span
                     className="w-2 h-2 rounded-full flex-shrink-0"
-                    style={{
-                      backgroundColor:
-                        PIE_COLORS[index % PIE_COLORS.length],
-                    }}
+                    style={{ backgroundColor: CHART_COLORS[index % CHART_COLORS.length] }}
                   />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between">
-                      <span className="text-sm text-ink">
+                      <span className="text-sm text-ink dark:text-surface-200">
                         {item.categoryName}
                       </span>
-                      <span className="text-sm font-medium text-ink font-mono">
+                      <span className="text-sm font-medium text-ink font-mono dark:text-surface-200">
                         ${item.total.toFixed(2)}
                       </span>
                     </div>
-                    {/* Progress bar */}
-                    <div className="mt-1 h-1.5 bg-surface-100 rounded-full overflow-hidden">
+                    <div className="mt-1 h-1.5 bg-surface-100 rounded-full overflow-hidden dark:bg-surface-800">
                       <div
                         className="h-full rounded-full transition-all duration-300"
                         style={{
                           width: `${Math.max(item.percentage, 2)}%`,
-                          backgroundColor:
-                            PIE_COLORS[index % PIE_COLORS.length],
+                          backgroundColor: CHART_COLORS[index % CHART_COLORS.length],
                         }}
                       />
                     </div>
@@ -401,9 +410,7 @@ export default function ExpensesPage() {
             </div>
           ) : (
             <div className="flex items-center justify-center h-32">
-              <p className="text-sm text-ink-lighter">
-                No expenses this month yet.
-              </p>
+              <p className="text-sm text-ink-lighter">No expenses this month yet.</p>
             </div>
           )}
         </div>
@@ -413,7 +420,7 @@ export default function ExpensesPage() {
       <div className="card-minimal overflow-hidden">
         {expenses.length === 0 ? (
           <div className="p-10 text-center">
-            <p className="text-sm text-ink-lighter">No expenses recorded yet.</p>
+            <p className="text-sm text-ink-lighter dark:text-surface-400">No expenses recorded yet.</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -433,11 +440,11 @@ export default function ExpensesPage() {
                     <td className="text-ink-lighter font-mono text-xs">
                       {expense.date}
                     </td>
-                    <td className="text-ink">{expense.description || '—'}</td>
+                    <td className="text-ink dark:text-surface-200">{expense.description || '—'}</td>
                     <td>
                       <span className="chip">{expense.categoryName}</span>
                     </td>
-                    <td className="text-right font-mono font-medium">
+                    <td className="text-right font-mono font-medium dark:text-surface-200">
                       ${expense.amount.toFixed(2)}
                     </td>
                     <td className="text-right">
@@ -449,7 +456,7 @@ export default function ExpensesPage() {
                           <Pencil className="w-3.5 h-3.5" />
                         </button>
                         <button
-                          onClick={() => handleDelete(expense.id)}
+                          onClick={() => setDeleteConfirm(expense.id)}
                           className="btn-ghost p-1.5 text-ink-lighter hover:text-danger"
                         >
                           <Trash2 className="w-3.5 h-3.5" />

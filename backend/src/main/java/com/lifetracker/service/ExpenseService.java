@@ -1,14 +1,11 @@
 package com.lifetracker.service;
 
-import com.lifetracker.dto.ExpenseRequest;
-import com.lifetracker.dto.ExpenseResponse;
-import com.lifetracker.dto.ExpenseSummaryItem;
-import com.lifetracker.dto.ExpenseSummaryResponse;
+import com.lifetracker.dto.*;
 import com.lifetracker.entity.Category;
 import com.lifetracker.entity.Expense;
-import com.lifetracker.entity.User;
 import com.lifetracker.repository.CategoryRepository;
 import com.lifetracker.repository.ExpenseRepository;
+import com.lifetracker.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -28,6 +25,7 @@ public class ExpenseService {
 
     private final ExpenseRepository expenseRepository;
     private final CategoryRepository categoryRepository;
+    private final UserRepository userRepository;
 
     public List<ExpenseResponse> getExpenses(Long userId, LocalDate from, LocalDate to, Long categoryId) {
         List<Expense> expenses;
@@ -49,7 +47,7 @@ public class ExpenseService {
                 .description(request.getDescription())
                 .date(request.getDate())
                 .category(category)
-                .user(UserReference.of(userId))
+                .user(userRepository.getReferenceById(userId))
                 .build();
 
         expense = expenseRepository.save(expense);
@@ -132,13 +130,5 @@ public class ExpenseService {
                 .categoryId(expense.getCategory().getId())
                 .categoryName(expense.getCategory().getName())
                 .build();
-    }
-
-    private static class UserReference extends User {
-        public static User of(Long id) {
-            User u = new User();
-            u.setId(id);
-            return u;
-        }
     }
 }

@@ -1,22 +1,25 @@
 import { useState, useEffect } from 'react';
-import { Plus, Trash2, Flame, Check } from 'lucide-react';
+import { Plus, Trash2, Flame, Check, Loader2 } from 'lucide-react';
 import { habitApi } from '../lib/api';
-import type { HabitResponse, HabitLogEntry } from '../types';
+import type { HabitResponse } from '../types';
 import {
   format,
   subDays,
-  isAfter,
   startOfDay,
   parseISO,
   isSameDay,
 } from 'date-fns';
+import ConfirmModal from '../components/ConfirmModal';
 
 export default function HabitsPage() {
   const [habits, setHabits] = useState<HabitResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [toggling, setToggling] = useState<Set<string>>(new Set());
   const [name, setName] = useState('');
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
 
   const fetchHabits = async () => {
     try {
@@ -42,6 +45,8 @@ export default function HabitsPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
+
+    setSubmitting(true);
     try {
       if (editingId) {
         await habitApi.update(editingId, { name: name.trim() });
@@ -52,11 +57,13 @@ export default function HabitsPage() {
       fetchHabits();
     } catch (err) {
       console.error(err);
+    } finally {
+      setSubmitting(false);
     }
   };
 
   const handleDelete = async (id: number) => {
-    if (!window.confirm('Delete this habit?')) return;
+    setDeleteConfirm(null);
     try {
       await habitApi.delete(id);
       fetchHabits();
@@ -66,6 +73,10 @@ export default function HabitsPage() {
   };
 
   const handleToggle = async (habitId: number, dateStr: string, currentCompleted: boolean) => {
+    const key = `${habitId}-${dateStr}`;
+    if (toggling.has(key)) return;
+
+    setToggling((prev) => new Set(prev).add(key));
     try {
       await habitApi.log(habitId, {
         date: dateStr,
@@ -74,6 +85,12 @@ export default function HabitsPage() {
       fetchHabits();
     } catch (err) {
       console.error(err);
+    } finally {
+      setToggling((prev) => {
+        const next = new Set(prev);
+        next.delete(key);
+        return next;
+      });
     }
   };
 
@@ -114,6 +131,18 @@ export default function HabitsPage() {
         </button>
       </div>
 
+      {/* Delete Confirmation Modal */}
+      <ConfirmModal
+        open={deleteConfirm !== null}
+        title="Delete Habit"
+        message="Are you sure you want to delete this habit? All progress and logs will be permanently removed."
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        variant="danger"
+        onConfirm={() => deleteConfirm !== null && handleDelete(deleteConfirm)}
+        onCancel={() => setDeleteConfirm(null)}
+      />
+
       {/* Form */}
       {showForm && (
         <div className="card-minimal p-6 mb-8 animate-slide-up">
@@ -132,13 +161,21 @@ export default function HabitsPage() {
                 className="input-minimal"
                 placeholder="Read, Exercise, Meditate…"
                 required
+                disabled={submitting}
               />
             </div>
-            <button type="submit" className="btn-primary">
-              {editingId ? 'Update' : 'Add'}
+            <button type="submit" className="btn-primary" disabled={submitting}>
+              {submitting ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Saving…</span>
+                </>
+              ) : (
+                editingId ? 'Update' : 'Add'
+              )}
             </button>
             {editingId && (
-              <button type="button" onClick={resetForm} className="btn-secondary">
+              <button type="button" onClick={resetForm} className="btn-secondary" disabled={submitting}>
                 Cancel
               </button>
             )}
@@ -159,7 +196,7 @@ export default function HabitsPage() {
             <div key={habit.id} className="card-minimal p-6 animate-slide-up">
               <div className="flex items-center justify-between mb-5">
                 <div className="flex items-center gap-3">
-                  <h3 className="text-base font-medium text-ink">
+                  <h3 className="text-base font-medium text-ink dark:text-surface-200">
                     {habit.name}
                   </h3>
                   <div className="flex items-center gap-3 text-xs text-ink-lighter">
@@ -174,7 +211,7 @@ export default function HabitsPage() {
                   </div>
                 </div>
                 <button
-                  onClick={() => handleDelete(habit.id)}
+                  onClick={() => setDeleteConfirm(habit.id)}
                   className="btn-ghost p-1.5 text-ink-lighter hover:text-danger"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
@@ -187,6 +224,8 @@ export default function HabitsPage() {
                   const logged = isLogged(habit, day);
                   const isToday = isSameDay(day, today);
                   const dayStr = format(day, 'yyyy-MM-dd');
+                  const toggleKey = `${habit.id}-${dayStr}`;
+                  const isLoading = toggling.has(toggleKey);
 
                   return (
                     <button
@@ -194,20 +233,22 @@ export default function HabitsPage() {
                       onClick={() =>
                         handleToggle(habit.id, dayStr, logged === true)
                       }
+                      disabled={isLoading}
                       className={`
                         flex flex-col items-center gap-1 p-2 rounded-lg transition-all duration-200
                         ${logged === true
                           ? 'bg-success/10'
                           : logged === false
-                            ? 'bg-surface-100'
-                            : 'bg-surface-50 border border-surface-200 border-dashed'
+                            ? 'bg-surface-100 dark:bg-surface-800'
+                            : 'bg-surface-50 border border-surface-200 border-dashed dark:bg-surface-900 dark:border-surface-700'
                         }
-                        ${isToday ? 'ring-1 ring-ink/10' : ''}
+                        ${isToday ? 'ring-1 ring-ink/10 dark:ring-surface-100/10' : ''}
                         hover:scale-105 active:scale-95
+                        ${isLoading ? 'opacity-50 animate-pulse pointer-events-none' : ''}
                       `}
                       title={`${format(day, 'EEE, MMM d')}`}
                     >
-                      <span className="text-[10px] font-medium text-ink-lighter uppercase">
+                      <span className="text-[10px] font-medium text-ink-lighter uppercase dark:text-surface-500">
                         {format(day, 'EEE').charAt(0)}
                       </span>
                       <div
@@ -217,19 +258,18 @@ export default function HabitsPage() {
                           ${logged === true
                             ? 'bg-success text-white'
                             : logged === false
-                              ? 'bg-surface-200 text-ink-lighter'
+                              ? 'bg-surface-200 text-ink-lighter dark:bg-surface-700'
                               : 'bg-transparent'
                           }
                         `}
                       >
-                        {logged === true && (
+                        {isLoading ? (
+                          <Loader2 className="w-3 h-3 animate-spin text-ink-lighter" />
+                        ) : logged === true ? (
                           <Check className="w-3.5 h-3.5" />
-                        )}
-                        {logged === null && (
-                          <span className="text-[10px] text-ink-lighter/40">?</span>
-                        )}
+                        ) : null}
                       </div>
-                      <span className="text-[10px] text-ink-lighter">
+                      <span className="text-[10px] text-ink-lighter dark:text-surface-500">
                         {format(day, 'd')}
                       </span>
                     </button>

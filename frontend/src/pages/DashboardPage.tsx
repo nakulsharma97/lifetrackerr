@@ -6,16 +6,24 @@ import {
   PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts';
 
-const PIE_COLORS = [
-  '#171717',
-  '#525252',
-  '#a3a3a3',
-  '#d4d4d4',
-  '#475569',
-  '#64748b',
-  '#94a3b8',
-  '#cbd5e1',
-];
+function getChartColors(): string[] {
+  if (typeof window === 'undefined') {
+    return ['#171717', '#525252', '#a3a3a3', '#d4d4d4', '#475569', '#64748b', '#94a3b8', '#cbd5e1'];
+  }
+  const style = getComputedStyle(document.documentElement);
+  return [
+    style.getPropertyValue('--chart-1').trim() || '#171717',
+    style.getPropertyValue('--chart-2').trim() || '#525252',
+    style.getPropertyValue('--chart-3').trim() || '#a3a3a3',
+    style.getPropertyValue('--chart-4').trim() || '#d4d4d4',
+    style.getPropertyValue('--chart-5').trim() || '#475569',
+    style.getPropertyValue('--chart-6').trim() || '#64748b',
+    style.getPropertyValue('--chart-7').trim() || '#94a3b8',
+    style.getPropertyValue('--chart-8').trim() || '#cbd5e1',
+  ];
+}
+
+const CHART_COLORS = getChartColors();
 
 export default function DashboardPage() {
   const [summary, setSummary] = useState<ExpenseSummaryResponse | null>(null);
@@ -59,8 +67,8 @@ export default function DashboardPage() {
         <div className="card-minimal p-6">
           <div className="flex items-center justify-between mb-4">
             <span className="stat-label">Spent This Month</span>
-            <div className="w-9 h-9 rounded-lg bg-surface-100 flex items-center justify-center">
-              <DollarSign className="w-4 h-4 text-ink" />
+            <div className="w-9 h-9 rounded-lg bg-surface-100 flex items-center justify-center dark:bg-surface-800">
+              <DollarSign className="w-4 h-4 text-ink dark:text-surface-100" />
             </div>
           </div>
           <p className="stat-value">
@@ -74,8 +82,8 @@ export default function DashboardPage() {
         <div className="card-minimal p-6">
           <div className="flex items-center justify-between mb-4">
             <span className="stat-label">Active Habits</span>
-            <div className="w-9 h-9 rounded-lg bg-surface-100 flex items-center justify-center">
-              <Target className="w-4 h-4 text-ink" />
+            <div className="w-9 h-9 rounded-lg bg-surface-100 flex items-center justify-center dark:bg-surface-800">
+              <Target className="w-4 h-4 text-ink dark:text-surface-100" />
             </div>
           </div>
           <p className="stat-value">{habits.length}</p>
@@ -85,8 +93,8 @@ export default function DashboardPage() {
         <div className="card-minimal p-6">
           <div className="flex items-center justify-between mb-4">
             <span className="stat-label">Categories Used</span>
-            <div className="w-9 h-9 rounded-lg bg-surface-100 flex items-center justify-center">
-              <TrendingUp className="w-4 h-4 text-ink" />
+            <div className="w-9 h-9 rounded-lg bg-surface-100 flex items-center justify-center dark:bg-surface-800">
+              <TrendingUp className="w-4 h-4 text-ink dark:text-surface-100" />
             </div>
           </div>
           <p className="stat-value">
@@ -104,9 +112,9 @@ export default function DashboardPage() {
             {habits.map((habit) => (
               <div
                 key={habit.id}
-                className="flex items-center justify-between py-2 border-b border-surface-100 last:border-0"
+                className="flex items-center justify-between py-2 border-b border-surface-100 last:border-0 dark:border-surface-800"
               >
-                <span className="text-sm text-ink">{habit.name}</span>
+                <span className="text-sm text-ink dark:text-surface-200">{habit.name}</span>
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-ink-lighter">
                     🔥 {habit.currentStreak} day streak
@@ -126,7 +134,6 @@ export default function DashboardPage() {
         <h2 className="heading-sm mb-5">Expense Breakdown</h2>
         {summary?.breakdown && summary.breakdown.length > 0 ? (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Pie Chart */}
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -148,14 +155,14 @@ export default function DashboardPage() {
                     {summary.breakdown.map((_, index) => (
                       <Cell
                         key={`cell-${index}`}
-                        fill={PIE_COLORS[index % PIE_COLORS.length]}
+                        fill={CHART_COLORS[index % CHART_COLORS.length]}
                       />
                     ))}
                   </Pie>
                   <Tooltip
                     contentStyle={{
-                      background: '#fff',
-                      border: '1px solid #e5e5e5',
+                      background: 'var(--tooltip-bg, #fff)',
+                      border: '1px solid var(--tooltip-border, #e5e5e5)',
                       borderRadius: '8px',
                       boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
                       fontSize: '13px',
@@ -169,33 +176,31 @@ export default function DashboardPage() {
                     iconType="circle"
                     iconSize={8}
                     formatter={(value: string) => (
-                      <span className="text-sm text-ink-light">{value}</span>
+                      <span className="text-sm text-ink-light dark:text-surface-400">{value}</span>
                     )}
                   />
                 </PieChart>
               </ResponsiveContainer>
             </div>
-            {/* Side panel with totals */}
             <div className="flex flex-col justify-center space-y-3">
               {summary.breakdown.map((item, index) => (
                 <div
                   key={item.categoryId}
-                  className="flex items-center justify-between py-2 border-b border-surface-100 last:border-0"
+                  className="flex items-center justify-between py-2 border-b border-surface-100 last:border-0 dark:border-surface-800"
                 >
                   <div className="flex items-center gap-2.5">
                     <span
                       className="w-2.5 h-2.5 rounded-full"
                       style={{
-                        backgroundColor:
-                          PIE_COLORS[index % PIE_COLORS.length],
+                        backgroundColor: CHART_COLORS[index % CHART_COLORS.length],
                       }}
                     />
-                    <span className="text-sm text-ink">
+                    <span className="text-sm text-ink dark:text-surface-200">
                       {item.categoryName}
                     </span>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm font-medium text-ink">
+                    <p className="text-sm font-medium text-ink dark:text-surface-200">
                       ${item.total.toFixed(2)}
                     </p>
                     <p className="text-xs text-ink-lighter">
