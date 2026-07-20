@@ -1,7 +1,7 @@
 import axios from 'axios';
-import type { AuthResponse } from '../types';
+import type { AuthResponse, ExpensePageResponse } from '../types';
 
-const API_BASE = '/api';
+const API_BASE = import.meta.env.VITE_API_URL || '/api';
 
 const api = axios.create({
   baseURL: API_BASE,
@@ -60,8 +60,8 @@ export const categoryApi = {
 // ─── Expenses ──────────────────────────────────────────────
 
 export const expenseApi = {
-  list: (params?: { from?: string; to?: string; categoryId?: number }) =>
-    api.get('/expenses', { params }),
+  list: (params?: { from?: string; to?: string; categoryId?: number; page?: number; size?: number }) =>
+    api.get<ExpensePageResponse>('/expenses', { params }),
 
   summary: () => api.get('/expenses/summary'),
 
