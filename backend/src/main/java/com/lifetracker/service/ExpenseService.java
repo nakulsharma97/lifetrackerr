@@ -8,6 +8,8 @@ import com.lifetracker.repository.ExpenseRepository;
 import com.lifetracker.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,15 +29,15 @@ public class ExpenseService {
     private final CategoryRepository categoryRepository;
     private final UserRepository userRepository;
 
-    public List<ExpenseResponse> getExpenses(Long userId, LocalDate from, LocalDate to, Long categoryId) {
-        List<Expense> expenses;
+    public Page<ExpenseResponse> getExpenses(Long userId, LocalDate from, LocalDate to, Long categoryId, Pageable pageable) {
+        Page<Expense> expenses;
         if (categoryId != null) {
             expenses = expenseRepository
-                    .findByUserIdAndCategoryIdAndDateBetweenOrderByDateDesc(userId, categoryId, from, to);
+                    .findByUserIdAndCategoryIdAndDateBetweenOrderByDateDesc(userId, categoryId, from, to, pageable);
         } else {
-            expenses = expenseRepository.findByUserIdAndDateBetweenOrderByDateDesc(userId, from, to);
+            expenses = expenseRepository.findByUserIdAndDateBetweenOrderByDateDesc(userId, from, to, pageable);
         }
-        return expenses.stream().map(this::toResponse).collect(Collectors.toList());
+        return expenses.map(this::toResponse);
     }
 
     public ExpenseResponse createExpense(Long userId, ExpenseRequest request) {

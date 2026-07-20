@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, Pencil, Trash2, PieChart as PieChartIcon, RotateCcw, Loader2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, PieChart as PieChartIcon, RotateCcw, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { expenseApi, categoryApi } from '../lib/api';
-import type { ExpenseResponse, CategoryResponse, ExpenseSummaryResponse } from '../types';
+import type { ExpenseResponse, CategoryResponse, ExpenseSummaryResponse, ExpensePageResponse } from '../types';
 import { format, startOfMonth } from 'date-fns';
 import {
   PieChart, Pie, Cell, Tooltip, ResponsiveContainer,
@@ -42,6 +42,12 @@ export default function ExpensesPage() {
   const [categoryId, setCategoryId] = useState<number | ''>('');
   const [editingId, setEditingId] = useState<number | null>(null);
 
+  // ─── Pagination ──────────────────────────────────────────
+  const [page, setPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalElements, setTotalElements] = useState(0);
+  const pageSize = 10;
+
   // ─── Filters ──────────────────────────────────────────────
   const today = new Date();
   const [dateFrom, setDateFrom] = useState(format(startOfMonth(today), 'yyyy-MM-dd'));
@@ -53,17 +59,22 @@ export default function ExpensesPage() {
       const params: Record<string, string> = {
         from: dateFrom,
         to: dateTo,
+        page: String(page),
+        size: String(pageSize),
       };
       if (filterCategoryId !== '') {
         params.categoryId = String(filterCategoryId);
       }
 
-      const [expRes, catRes, summaryRes] = await Promise.all([
+      const [pageRes, catRes, summaryRes] = await Promise.all([
         expenseApi.list(params),
         categoryApi.list('EXPENSE'),
         expenseApi.summary(),
       ]);
-      setExpenses(expRes.data);
+      const pageData = pageRes.data as ExpensePageResponse;
+      setExpenses(pageData.content);
+      setTotalPages(pageData.totalPages);
+      setTotalElements(pageData.totalElements);
       setCategories(catRes.data);
       setSummary(summaryRes.data);
     } catch (err) {
@@ -71,7 +82,7 @@ export default function ExpensesPage() {
     } finally {
       setLoading(false);
     }
-  }, [dateFrom, dateTo, filterCategoryId]);
+  }, [dateFrom, dateTo, filterCategoryId, page]);
 
   useEffect(() => {
     fetchData();
@@ -81,6 +92,7 @@ export default function ExpensesPage() {
     setDateFrom(format(startOfMonth(new Date()), 'yyyy-MM-dd'));
     setDateTo(format(new Date(), 'yyyy-MM-dd'));
     setFilterCategoryId('');
+    setPage(0);
   };
 
   const resetForm = () => {
@@ -165,7 +177,7 @@ export default function ExpensesPage() {
         </button>
       </div>
 
-      {/* ─── Delete Confirmation Modal ─────────────────────── */}
+      {/* Delete Confirmation Modal */}
       <ConfirmModal
         open={deleteConfirm !== null}
         title="Delete Expense"
@@ -177,7 +189,7 @@ export default function ExpensesPage() {
         onCancel={() => setDeleteConfirm(null)}
       />
 
-      {/* ─── Filter Bar ────────────────────────────────────── */}
+      {/* Filter Bar */}
       <div className="card-minimal p-4 mb-6">
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
           <span className="text-xs font-medium uppercase tracking-wider text-ink-lighter">
@@ -189,7 +201,7 @@ export default function ExpensesPage() {
             <input
               type="date"
               value={dateFrom}
-              onChange={(e) => setDateFrom(e.target.value)}
+              onChange={(e) => { setDateFrom(e.target.value); setPage(0); }}
               className="input-minimal w-auto text-sm py-1.5 px-3"
             />
           </div>
@@ -199,7 +211,7 @@ export default function ExpensesPage() {
             <input
               type="date"
               value={dateTo}
-              onChange={(e) => setDateTo(e.target.value)}
+              onChange={(e) => { setDateTo(e.target.value); setPage(0); }}
               className="input-minimal w-auto text-sm py-1.5 px-3"
             />
           </div>
@@ -208,7 +220,7 @@ export default function ExpensesPage() {
             <label className="text-xs text-ink-lighter">Category</label>
             <select
               value={filterCategoryId}
-              onChange={(e) => setFilterCategoryId(e.target.value ? Number(e.target.value) : '')}
+              onChange={(e) => { setFilterCategoryId(e.target.value ? Number(e.target.value) : ''); setPage(0); }}
               className="input-minimal w-auto text-sm py-1.5 px-3 pr-8"
             >
               <option value="">All</option>
@@ -423,51 +435,109 @@ export default function ExpensesPage() {
             <p className="text-sm text-ink-lighter dark:text-surface-400">No expenses recorded yet.</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="table-minimal">
-              <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>Description</th>
-                  <th>Category</th>
-                  <th className="text-right">Amount</th>
-                  <th className="text-right w-20">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {expenses.map((expense) => (
-                  <tr key={expense.id}>
-                    <td className="text-ink-lighter font-mono text-xs">
-                      {expense.date}
-                    </td>
-                    <td className="text-ink dark:text-surface-200">{expense.description || '—'}</td>
-                    <td>
-                      <span className="chip">{expense.categoryName}</span>
-                    </td>
-                    <td className="text-right font-mono font-medium dark:text-surface-200">
-                      ${expense.amount.toFixed(2)}
-                    </td>
-                    <td className="text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <button
-                          onClick={() => handleEdit(expense)}
-                          className="btn-ghost p-1.5"
-                        >
-                          <Pencil className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={() => setDeleteConfirm(expense.id)}
-                          className="btn-ghost p-1.5 text-ink-lighter hover:text-danger"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </td>
+          <>
+            <div className="overflow-x-auto">
+              <table className="table-minimal">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Description</th>
+                    <th>Category</th>
+                    <th className="text-right">Amount</th>
+                    <th className="text-right w-20">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {expenses.map((expense) => (
+                    <tr key={expense.id}>
+                      <td className="text-ink-lighter font-mono text-xs">
+                        {expense.date}
+                      </td>
+                      <td className="text-ink dark:text-surface-200">{expense.description || '—'}</td>
+                      <td>
+                        <span className="chip">{expense.categoryName}</span>
+                      </td>
+                      <td className="text-right font-mono font-medium dark:text-surface-200">
+                        ${expense.amount.toFixed(2)}
+                      </td>
+                      <td className="text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <button
+                            onClick={() => handleEdit(expense)}
+                            className="btn-ghost p-1.5"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => setDeleteConfirm(expense.id)}
+                            className="btn-ghost p-1.5 text-ink-lighter hover:text-danger"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between px-6 py-4 border-t border-surface-100 dark:border-surface-800">
+                <p className="text-xs text-ink-lighter dark:text-surface-500">
+                  {totalElements} total expenses
+                </p>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => setPage((p) => Math.max(0, p - 1))}
+                    disabled={page === 0}
+                    className="btn-ghost p-1.5 disabled:opacity-30"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+
+                  {Array.from({ length: totalPages }, (_, i) => i)
+                    .filter((p) => {
+                      // Show first, last, current, and neighbors
+                      return p === 0 || p === totalPages - 1 || Math.abs(p - page) <= 1;
+                    })
+                    .reduce<(number | 'ellipsis')[]>((acc, p, idx, arr) => {
+                      if (idx > 0 && p - arr[idx - 1] > 1) acc.push('ellipsis');
+                      acc.push(p);
+                      return acc;
+                    }, [])
+                    .map((p, idx) =>
+                      p === 'ellipsis' ? (
+                        <span key={`ellipsis-${idx}`} className="px-1 text-xs text-ink-lighter">
+                          …
+                        </span>
+                      ) : (
+                        <button
+                          key={p}
+                          onClick={() => setPage(p)}
+                          className={`w-8 h-8 rounded-md text-xs font-medium transition-colors ${
+                            p === page
+                              ? 'bg-ink text-white dark:bg-surface-100 dark:text-surface-950'
+                              : 'text-ink-light hover:bg-surface-100 dark:text-surface-400 dark:hover:bg-surface-800'
+                          }`}
+                        >
+                          {p + 1}
+                        </button>
+                      )
+                    )}
+
+                  <button
+                    onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+                    disabled={page >= totalPages - 1}
+                    className="btn-ghost p-1.5 disabled:opacity-30"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

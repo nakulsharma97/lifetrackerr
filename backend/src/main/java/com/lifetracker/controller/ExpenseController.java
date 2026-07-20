@@ -7,12 +7,15 @@ import com.lifetracker.dto.ExpenseSummaryResponse;
 import com.lifetracker.service.ExpenseService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
-import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/expenses")
@@ -23,17 +26,30 @@ public class ExpenseController {
     private final SecurityUtil securityUtil;
 
     @GetMapping
-    public ResponseEntity<List<ExpenseResponse>> getExpenses(
+    public ResponseEntity<Map<String, Object>> getExpenses(
             @RequestParam(required = false) String from,
             @RequestParam(required = false) String to,
-            @RequestParam(required = false) Long categoryId) {
+            @RequestParam(required = false) Long categoryId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
 
         Long userId = securityUtil.getCurrentUserId();
         LocalDate fromDate = from != null ? LocalDate.parse(from) : LocalDate.now().withDayOfMonth(1);
         LocalDate toDate = to != null ? LocalDate.parse(to) : LocalDate.now();
 
-        List<ExpenseResponse> expenses = expenseService.getExpenses(userId, fromDate, toDate, categoryId);
-        return ResponseEntity.ok(expenses);
+        PageRequest pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "date"));
+        Page<ExpenseResponse> expensePage = expenseService.getExpenses(userId, fromDate, toDate, categoryId, pageable);
+
+        Map<String, Object> response = Map.of(
+                "content", expensePage.getContent(),
+                "page", expensePage.getNumber(),
+                "size", expensePage.getSize(),
+                "totalElements", expensePage.getTotalElements(),
+                "totalPages", expensePage.getTotalPages(),
+                "last", expensePage.isLast()
+        );
+
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/summary")
