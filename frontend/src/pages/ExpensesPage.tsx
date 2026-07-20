@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, Pencil, Trash2, PieChart as PieChartIcon, RotateCcw } from 'lucide-react';
+import { Plus, Pencil, Trash2, PieChart as PieChartIcon, RotateCcw, Loader2 } from 'lucide-react';
 import { expenseApi, categoryApi } from '../lib/api';
 import type { ExpenseResponse, CategoryResponse, ExpenseSummaryResponse } from '../types';
 import { format, startOfMonth } from 'date-fns';
@@ -24,6 +24,7 @@ export default function ExpensesPage() {
   const [summary, setSummary] = useState<ExpenseSummaryResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
@@ -85,6 +86,7 @@ export default function ExpensesPage() {
     e.preventDefault();
     if (!amount || !categoryId) return;
 
+    setSubmitting(true);
     try {
       const payload = {
         amount: parseFloat(amount),
@@ -103,6 +105,8 @@ export default function ExpensesPage() {
       fetchData();
     } catch (err) {
       console.error(err);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -228,6 +232,7 @@ export default function ExpensesPage() {
                 className="input-minimal"
                 placeholder="0.00"
                 required
+                disabled={submitting}
               />
             </div>
             <div>
@@ -240,6 +245,7 @@ export default function ExpensesPage() {
                 onChange={(e) => setDate(e.target.value)}
                 className="input-minimal"
                 required
+                disabled={submitting}
               />
             </div>
             <div>
@@ -251,6 +257,7 @@ export default function ExpensesPage() {
                 onChange={(e) => setCategoryId(Number(e.target.value))}
                 className="input-minimal"
                 required
+                disabled={submitting}
               >
                 <option value="">Select…</option>
                 {categories.map((cat) => (
@@ -270,14 +277,22 @@ export default function ExpensesPage() {
                 onChange={(e) => setDescription(e.target.value)}
                 className="input-minimal"
                 placeholder="Coffee, lunch…"
+                disabled={submitting}
               />
             </div>
             <div className="sm:col-span-4 flex justify-end gap-3 pt-2">
-              <button type="button" onClick={resetForm} className="btn-secondary">
+              <button type="button" onClick={resetForm} className="btn-secondary" disabled={submitting}>
                 Cancel
               </button>
-              <button type="submit" className="btn-primary">
-                {editingId ? 'Update' : 'Add'}
+              <button type="submit" className="btn-primary" disabled={submitting}>
+                {submitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Saving…</span>
+                  </>
+                ) : (
+                  editingId ? 'Update' : 'Add'
+                )}
               </button>
             </div>
           </form>
