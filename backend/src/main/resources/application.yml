@@ -5,17 +5,7 @@ spring:
   application:
     name: lifetracker
 
-  # Default profile — H2 in-memory (dev)
-  profiles:
-    active: dev
-
----
-# Development profile — H2
-spring:
-  config:
-    activate:
-      on-profile: dev
-
+  # Default profile uses H2 in-memory database
   datasource:
     url: jdbc:h2:mem:lifetracker
     driver-class-name: org.h2.Driver
@@ -36,33 +26,32 @@ spring:
         format_sql: true
         dialect: org.hibernate.dialect.H2Dialect
 
+# JWT Configuration
+app:
+  jwt:
+    secret: "404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970337336763979244226452948404D635166546A576E5A7234753778214125442A47"
+    expiration-ms: 86400000  # 24 hours
+
 ---
-# Production profile — MySQL
+# Production profile — PostgreSQL
 spring:
   config:
     activate:
       on-profile: prod
 
   datasource:
-    url: jdbc:mysql://localhost:3306/lifetracker?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
-    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:postgresql://localhost:5432/lifetracker
+    driver-class-name: org.postgresql.Driver
     username: ${DB_USERNAME:lifetracker}
     password: ${DB_PASSWORD:lifetracker}
 
   jpa:
     hibernate:
-      ddl-auto: update
-    show-sql: false
+      ddl-auto: validate
     properties:
       hibernate:
-        dialect: org.hibernate.dialect.MySQLDialect
+        dialect: org.hibernate.dialect.PostgreSQLDialect
 
   h2:
     console:
       enabled: false
-
-# JWT Configuration
-app:
-  jwt:
-    secret: "404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970337336763979244226452948404D635166546A576E5A7234753778214125442A47"
-    expiration-ms: 86400000  # 24 hours

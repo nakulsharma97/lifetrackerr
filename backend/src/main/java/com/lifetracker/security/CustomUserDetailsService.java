@@ -17,9 +17,8 @@ public class CustomUserDetailsService implements UserDetailsService {
     private final UserRepository userRepository;
 
     /**
-     * Loads user by username (used by AuthenticationManager during login).
-     * The parameter name is "username" — Spring Security passes the username here,
-     * NOT a numeric ID. This correctly looks up by findByUsername().
+     * Called by the AuthenticationManager during login.
+     * Looks up the user by their username (not ID).
      */
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
@@ -34,9 +33,10 @@ public class CustomUserDetailsService implements UserDetailsService {
     }
 
     /**
-     * Loads user by numeric ID (used by JwtAuthenticationFilter after token validation).
+     * Called by JwtAuthenticationFilter after token validation.
+     * Looks up the user by their numeric ID (stored in JWT subject).
      */
-    public UserDetails loadUserById(Long userId) {
+    public UserDetails loadUserById(Long userId) throws UsernameNotFoundException {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found with id: " + userId));
 

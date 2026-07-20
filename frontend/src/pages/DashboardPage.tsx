@@ -6,31 +6,21 @@ import {
   PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts';
 
-const getChartColors = () => {
-  if (typeof document === 'undefined') return ['#171717', '#525252', '#a3a3a3', '#d4d4d4', '#475569', '#64748b', '#94a3b8', '#cbd5e1'];
-  const root = document.documentElement;
-  const style = getComputedStyle(root);
-  return [
-    style.getPropertyValue('--chart-1').trim() || '#171717',
-    style.getPropertyValue('--chart-2').trim() || '#525252',
-    style.getPropertyValue('--chart-3').trim() || '#a3a3a3',
-    style.getPropertyValue('--chart-4').trim() || '#d4d4d4',
-    style.getPropertyValue('--chart-5').trim() || '#475569',
-    style.getPropertyValue('--chart-6').trim() || '#64748b',
-    style.getPropertyValue('--chart-7').trim() || '#94a3b8',
-    style.getPropertyValue('--chart-8').trim() || '#cbd5e1',
-  ];
-};
+const PIE_COLORS = [
+  '#171717',
+  '#525252',
+  '#a3a3a3',
+  '#d4d4d4',
+  '#475569',
+  '#64748b',
+  '#94a3b8',
+  '#cbd5e1',
+];
 
 export default function DashboardPage() {
   const [summary, setSummary] = useState<ExpenseSummaryResponse | null>(null);
   const [habits, setHabits] = useState<HabitResponse[]>([]);
   const [loading, setLoading] = useState(true);
-  const [pieColors, setPieColors] = useState<string[]>(getChartColors());
-
-  useEffect(() => {
-    setPieColors(getChartColors());
-  }, []);
 
   useEffect(() => {
     Promise.all([
@@ -158,7 +148,7 @@ export default function DashboardPage() {
                     {summary.breakdown.map((_, index) => (
                       <Cell
                         key={`cell-${index}`}
-                        fill={pieColors[index % pieColors.length]}
+                        fill={PIE_COLORS[index % PIE_COLORS.length]}
                       />
                     ))}
                   </Pie>
@@ -196,7 +186,8 @@ export default function DashboardPage() {
                     <span
                       className="w-2.5 h-2.5 rounded-full"
                       style={{
-                        backgroundColor: pieColors[index % pieColors.length],
+                        backgroundColor:
+                          PIE_COLORS[index % PIE_COLORS.length],
                       }}
                     />
                     <span className="text-sm text-ink">

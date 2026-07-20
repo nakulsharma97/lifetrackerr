@@ -31,7 +31,6 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Landing page — public */}
         <Route path="/" element={<LandingPage />} />
 
         {/* Auth pages */}
